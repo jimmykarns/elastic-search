@@ -17,19 +17,29 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
 
 public class ClassificationInferenceResultsTests extends AbstractWireSerializingTestCase<ClassificationInferenceResults> {
 
     public static ClassificationInferenceResults createRandomResults() {
+        Supplier<FeatureImportance> featureImportanceCtor = randomBoolean() ?
+            FeatureImportanceTests::randomClassification :
+            FeatureImportanceTests::randomRegression;
+
         return new ClassificationInferenceResults(randomDouble(),
             randomBoolean() ? null : randomAlphaOfLength(10),
             randomBoolean() ? null :
                 Stream.generate(ClassificationInferenceResultsTests::createRandomClassEntry)
                     .limit(randomIntBetween(0, 10))
+                    .collect(Collectors.toList()),
+            randomBoolean() ? null :
+                Stream.generate(featureImportanceCtor)
+                    .limit(randomIntBetween(1, 10))
                     .collect(Collectors.toList()),
             ClassificationConfigTests.randomClassificationConfig());
     }
@@ -97,13 +107,47 @@ public class ClassificationInferenceResultsTests extends AbstractWireSerializing
         List<?> list = (List<?>) MapHelper.dig("result_field.bar", resultsDoc);
         assertThat(list.size(), equalTo(3));
 
-        for(int i = 0; i < 3; i++) {
-            Map<String, Object> map = (Map<String, Object>)list.get(i);
+        for (int i = 0; i < 3; i++) {
+            Map<String, Object> map = (Map<String, Object>) list.get(i);
             assertThat(map, equalTo(entries.get(i).asValueMap()));
         }
 
         Object value = MapHelper.dig("result_field.my_results", resultsDoc);
         assertThat(value, equalTo("foo"));
+    }
+
+    public void testWriteResultsWithImportance() {
+        Supplier<FeatureImportance> featureImportanceCtor = randomBoolean() ?
+            FeatureImportanceTests::randomClassification :
+            FeatureImportanceTests::randomRegression;
+
+        List<FeatureImportance> importanceList = Stream.generate(featureImportanceCtor)
+            .limit(5)
+            .collect(Collectors.toList());
+        ClassificationInferenceResults result = new ClassificationInferenceResults(0.0,
+            "foo",
+            Collections.emptyList(),
+            importanceList,
+            new ClassificationConfig(0, "predicted_value", "top_classes", 3));
+        IngestDocument document = new IngestDocument(new HashMap<>(), new HashMap<>());
+        result.writeResult(document, "result_field");
+
+        assertThat(document.getFieldValue("result_field.predicted_value", String.class), equalTo("foo"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> writtenImportance = (List<Map<String, Object>>)document.getFieldValue(
+            "result_field.feature_importance",
+            List.class);
+        assertThat(writtenImportance, hasSize(3));
+        importanceList.sort((l, r)-> Double.compare(Math.abs(r.getImportance()), Math.abs(l.getImportance())));
+        for (int i = 0; i < 3; i++) {
+            Map<String, Object> objectMap = writtenImportance.get(i);
+            FeatureImportance importance = importanceList.get(i);
+            assertThat(objectMap.get("feature_name"), equalTo(importance.getFeatureName()));
+            assertThat(objectMap.get("importance"), equalTo(importance.getImportance()));
+            if (importance.getClassImportance() != null) {
+                importance.getClassImportance().forEach((k, v) -> assertThat(objectMap.get(k), equalTo(v)));
+            }
+        }
     }
 
     @Override
