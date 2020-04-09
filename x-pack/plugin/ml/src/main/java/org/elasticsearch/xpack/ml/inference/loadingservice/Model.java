@@ -8,16 +8,18 @@ package org.elasticsearch.xpack.ml.inference.loadingservice;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.xpack.core.ml.inference.results.InferenceResults;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceConfig;
+import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceConfigUpdate;
 import org.elasticsearch.xpack.core.ml.utils.MapHelper;
+import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceStats;
 
 import java.util.Map;
 import java.util.Set;
 
-public interface Model {
+public interface Model<T extends InferenceConfig> {
 
     String getResultsType();
 
-    void infer(Map<String, Object> fields, InferenceConfig inferenceConfig, ActionListener<InferenceResults> listener);
+    void infer(Map<String, Object> fields, InferenceConfigUpdate<T> inferenceConfig, ActionListener<InferenceResults> listener);
 
     InferenceResults infer(Map<String, Object> fields, InferenceConfig inferenceConfig);
 
@@ -47,4 +49,6 @@ public interface Model {
     }
 
     Set<String> getFieldNames();
+
+    InferenceStats getLatestStatsAndReset();
 }
