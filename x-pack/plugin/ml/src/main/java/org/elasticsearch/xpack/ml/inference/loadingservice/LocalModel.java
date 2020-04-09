@@ -140,11 +140,19 @@ public class LocalModel implements Model {
     }
 
     @Override
-    public InferenceResults infer(Map<String, Object> fields, InferenceConfig config) {
-        if (fieldNames.stream().allMatch(f -> MapHelper.dig(f, fields) == null)) {
-            return new WarningInferenceResults(Messages.getMessage(INFERENCE_WARNING_ALL_FIELDS_MISSING, modelId));
+    public InferenceResults infer(Map<String, Object> fields, InferenceConfigUpdate<T> update) throws Exception {
+        AtomicReference<InferenceResults> result = new AtomicReference<>();
+        AtomicReference<Exception> exception = new AtomicReference<>();
+        ActionListener<InferenceResults> listener = ActionListener.wrap(
+            result::set,
+            exception::set
+        );
+
+        infer(fields, update, listener);
+        if (exception.get() != null) {
+            throw exception.get();
         }
 
-        return trainedModelDefinition.infer(fields, config);
+        return result.get();
     }
 }

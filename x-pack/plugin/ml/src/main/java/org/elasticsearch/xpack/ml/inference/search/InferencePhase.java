@@ -14,7 +14,12 @@ import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.fetch.FetchSubPhase;
 import org.elasticsearch.search.internal.SearchContext;
 import org.elasticsearch.xpack.core.ml.inference.results.InferenceResults;
+import org.elasticsearch.xpack.core.ml.inference.trainedmodel.ClassificationConfig;
+import org.elasticsearch.xpack.core.ml.inference.trainedmodel.ClassificationConfigUpdate;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceConfig;
+import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceConfigUpdate;
+import org.elasticsearch.xpack.core.ml.inference.trainedmodel.RegressionConfig;
+import org.elasticsearch.xpack.core.ml.inference.trainedmodel.RegressionConfigUpdate;
 import org.elasticsearch.xpack.core.ml.utils.MapHelper;
 import org.elasticsearch.xpack.ml.inference.loadingservice.Model;
 import org.elasticsearch.xpack.ml.inference.loadingservice.ModelLoadingService;
@@ -78,12 +83,25 @@ public class InferencePhase implements FetchSubPhase {
         }
 
         InferenceConfig config = infBuilder.getInferenceConfig();
-        for (SearchHit hit : hits) {
-            InferenceResults infer = model.get().infer(
-                    mapFields(
-                            extractFields(hit, fieldsToRead), fieldMap), config);
 
-            addFieldsToHit(hit, infer.writeResultToMap(infBuilder.getTargetField()));
+        InferenceConfigUpdate update;
+        if (config instanceof RegressionConfig) {
+            update = RegressionConfigUpdate.fromConfig((RegressionConfig)config);
+        } else {
+            update = ClassificationConfigUpdate.fromConfig((ClassificationConfig)config);
+        }
+
+        for (SearchHit hit : hits) {
+            try {
+                InferenceResults infer = model.get().infer(
+                    mapFields(
+                        extractFields(hit, fieldsToRead), fieldMap), update);
+
+                addFieldsToHit(hit, infer.writeResultToMap(infBuilder.getTargetField()));
+            } catch (Exception e) {
+                continue;
+            }
+
         }
     }
 

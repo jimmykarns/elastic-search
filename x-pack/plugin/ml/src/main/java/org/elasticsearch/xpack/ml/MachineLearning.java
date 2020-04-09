@@ -227,6 +227,7 @@ import org.elasticsearch.xpack.ml.dataframe.process.NativeMemoryUsageEstimationP
 import org.elasticsearch.xpack.ml.dataframe.process.results.AnalyticsResult;
 import org.elasticsearch.xpack.ml.dataframe.process.results.MemoryUsageEstimationResult;
 import org.elasticsearch.xpack.ml.inference.TrainedModelStatsService;
+import org.elasticsearch.xpack.ml.inference.aggs.InferencePipelineAggregationBuilder;
 import org.elasticsearch.xpack.ml.inference.ingest.InferenceProcessor;
 import org.elasticsearch.xpack.ml.inference.loadingservice.ModelLoadingService;
 import org.elasticsearch.xpack.ml.inference.persistence.TrainedModelProvider;
@@ -946,6 +947,13 @@ public class MachineLearning extends Plugin implements SystemIndexPlugin, Analys
         return Collections.singletonList(
                 new SearchExtSpec<>(InferenceSearchExtBuilder.NAME, InferenceSearchExtBuilder::new,
                         InferenceSearchExtBuilder::fromXContent));
+    }
+
+    @Override
+    public List<PipelineAggregationSpec> getPipelineAggregations() {
+        return Collections.singletonList(new PipelineAggregationSpec(InferencePipelineAggregationBuilder.NAME,
+            in -> new InferencePipelineAggregationBuilder(in, modelLoadingService),
+            (parser, name) -> InferencePipelineAggregationBuilder.parse(modelLoadingService, name, parser)));
     }
 
     @Override
