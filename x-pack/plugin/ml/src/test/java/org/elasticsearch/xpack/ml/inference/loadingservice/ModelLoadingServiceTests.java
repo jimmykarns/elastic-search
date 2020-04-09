@@ -36,9 +36,9 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.xpack.core.ml.inference.TrainedModelConfig;
 import org.elasticsearch.xpack.core.ml.inference.TrainedModelDefinition;
 import org.elasticsearch.xpack.core.ml.inference.TrainedModelInput;
-import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceStats;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.ClassificationConfig;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceConfig;
+import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceStats;
 import org.elasticsearch.xpack.core.ml.job.messages.Messages;
 import org.elasticsearch.xpack.ml.inference.TrainedModelStatsService;
 import org.elasticsearch.xpack.ml.inference.ingest.InferenceProcessor;
@@ -57,20 +57,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.elasticsearch.xpack.ml.MachineLearning.UTILITY_THREAD_POOL_NAME;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.*;
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.argThat;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.atMost;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Matchers.*;
+import static org.mockito.Mockito.*;
 
 public class ModelLoadingServiceTests extends ESTestCase {
 
@@ -358,15 +348,16 @@ public class ModelLoadingServiceTests extends ESTestCase {
         withTrainedModel(model, 1L);
 
         ModelLoadingService modelLoadingService = new ModelLoadingService(trainedModelProvider,
-                auditor,
-                threadPool,
-                clusterService,
-                NamedXContentRegistry.EMPTY,
-                Settings.EMPTY,
+            auditor,
+            threadPool,
+            clusterService,
+            NamedXContentRegistry.EMPTY,
+            trainedModelStatsService,
+            Settings.EMPTY,
             "test-node");
 
         for(int i = 0; i < 3; i++) {
-            PlainActionFuture<Model> future = new PlainActionFuture<>();
+            PlainActionFuture<Model<? extends InferenceConfig>> future = new PlainActionFuture<>();
             modelLoadingService.getModelAndCache(model, future);
             assertThat(future.get(), is(not(nullValue())));
         }

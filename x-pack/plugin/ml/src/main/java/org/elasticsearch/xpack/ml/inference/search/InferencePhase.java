@@ -47,10 +47,10 @@ public class InferencePhase implements FetchSubPhase {
 
         InferenceSearchExtBuilder infBuilder = (InferenceSearchExtBuilder)inferenceBuilder;
 
-        SetOnce<Model> model = new SetOnce<>();
+        SetOnce<Model<? extends InferenceConfig>> model = new SetOnce<>();
         SetOnce<Exception> error = new SetOnce<>();
         CountDownLatch latch = new CountDownLatch(1);
-        ActionListener<Model> listener = new LatchedActionListener<>(
+        ActionListener<Model<? extends InferenceConfig>> listener = new LatchedActionListener<>(
                 ActionListener.wrap(model::set, error::set), latch);
 
         modelLoadingService.get().getModelAndCache(infBuilder.getModelId(), listener);
