@@ -140,7 +140,7 @@ public class LocalModel implements Model {
     }
 
     @Override
-    public InferenceResults infer(Map<String, Object> fields, InferenceConfigUpdate<T> update) throws Exception {
+    public InferenceResults infer(Map<String, Object> fields, InferenceConfigUpdate update) throws Exception {
         AtomicReference<InferenceResults> result = new AtomicReference<>();
         AtomicReference<Exception> exception = new AtomicReference<>();
         ActionListener<InferenceResults> listener = ActionListener.wrap(

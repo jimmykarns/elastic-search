@@ -35,6 +35,7 @@ import org.elasticsearch.common.settings.SettingsModule;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.xcontent.ContextParser;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.env.NodeEnvironment;
@@ -58,6 +59,7 @@ import org.elasticsearch.repositories.RepositoriesService;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.script.ScriptService;
+import org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
 import org.elasticsearch.search.fetch.FetchSubPhase;
 import org.elasticsearch.threadpool.ExecutorBuilder;
 import org.elasticsearch.threadpool.ScalingExecutorBuilder;
@@ -664,6 +666,7 @@ public class MachineLearning extends Plugin implements SystemIndexPlugin, Analys
             trainedModelStatsService,
             settings,
             clusterService.getNodeName());
+        this.modelLoadingService.set(modelLoadingService);
 
         // Data frame analytics components
         AnalyticsProcessManager analyticsProcessManager = new AnalyticsProcessManager(client, threadPool, analyticsProcessFactory,
@@ -953,7 +956,12 @@ public class MachineLearning extends Plugin implements SystemIndexPlugin, Analys
     public List<PipelineAggregationSpec> getPipelineAggregations() {
         return Collections.singletonList(new PipelineAggregationSpec(InferencePipelineAggregationBuilder.NAME,
             in -> new InferencePipelineAggregationBuilder(in, modelLoadingService),
-            (parser, name) -> InferencePipelineAggregationBuilder.parse(modelLoadingService, name, parser)));
+            aggParser()
+            ));
+    }
+
+    public ContextParser<String, ? extends PipelineAggregationBuilder> aggParser() {
+        return (parser, name) -> InferencePipelineAggregationBuilder.parse(modelLoadingService, name, parser);
     }
 
     @Override

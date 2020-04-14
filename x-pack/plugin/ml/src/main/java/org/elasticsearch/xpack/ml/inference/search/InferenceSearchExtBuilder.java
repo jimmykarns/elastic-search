@@ -16,10 +16,10 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.search.SearchExtBuilder;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceConfig;
+import org.elasticsearch.xpack.core.ml.inference.trainedmodel.LenientlyParsedInferenceConfig;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -40,13 +40,14 @@ public class InferenceSearchExtBuilder extends SearchExtBuilder {
     @SuppressWarnings("unchecked")
     private static final ConstructingObjectParser<InferenceSearchExtBuilder, Void> PARSER = new ConstructingObjectParser<>(
             NAME,
-            args -> new InferenceSearchExtBuilder((String) args[0], (List<InferenceConfig>) args[1],
+            args -> new InferenceSearchExtBuilder((String) args[0], (InferenceConfig) args[1],
                     (String) args[2], (Map<String, String>) args[3])
     );
 
     static {
         PARSER.declareString(constructorArg(), MODEL_ID);
-        PARSER.declareNamedObjects(constructorArg(), (p, c, n) -> p.namedObject(InferenceConfig.class, n, c), INFERENCE_CONFIG);
+        PARSER.declareNamedObject(constructorArg(),
+            (p, c, n) -> p.namedObject(LenientlyParsedInferenceConfig.class, n, c), INFERENCE_CONFIG);
         PARSER.declareString(optionalConstructorArg(), TARGET_FIELD);
         PARSER.declareField(optionalConstructorArg(), (p, c) -> p.mapStrings(), FIELD_MAP, ObjectParser.ValueType.OBJECT);
     }
@@ -60,16 +61,11 @@ public class InferenceSearchExtBuilder extends SearchExtBuilder {
     private final Map<String, String> fieldMap;
     private final String targetField;
 
-    public InferenceSearchExtBuilder(String modelId, List<InferenceConfig> config,
+    public InferenceSearchExtBuilder(String modelId, InferenceConfig config,
                                      @Nullable String targetField,
                                      @Nullable Map<String, String> fieldMap) {
         this.modelId = modelId;
-        if (config != null) {
-            assert config.size() == 1;
-            this.inferenceConfig = config.get(0);
-        } else {
-            this.inferenceConfig = null;
-        }
+        this.inferenceConfig = config;
         this.targetField = targetField == null ? DEFAULT_TARGET_FIELD : targetField;
         this.fieldMap = fieldMap == null ? Collections.emptyMap() : fieldMap;
     }

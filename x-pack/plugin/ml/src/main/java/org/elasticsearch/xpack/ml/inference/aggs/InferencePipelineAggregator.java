@@ -15,7 +15,6 @@ import org.elasticsearch.search.aggregations.pipeline.InternalSimpleValue;
 import org.elasticsearch.search.aggregations.pipeline.PipelineAggregator;
 import org.elasticsearch.xpack.core.ml.inference.results.InferenceResults;
 import org.elasticsearch.xpack.core.ml.inference.results.WarningInferenceResults;
-import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceConfig;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceConfigUpdate;
 import org.elasticsearch.xpack.ml.inference.loadingservice.Model;
 
@@ -28,17 +27,17 @@ import java.util.stream.StreamSupport;
 
 import static org.elasticsearch.search.aggregations.pipeline.BucketHelpers.resolveBucketValue;
 
-public class InferencePipelineAggregator<T extends InferenceConfig> extends PipelineAggregator {
+public class InferencePipelineAggregator extends PipelineAggregator {
 
     private Map<String, String> bucketPathMap;
-    private InferenceConfigUpdate<T> configUpdate;
+    private InferenceConfigUpdate configUpdate;
     private final BucketHelpers.GapPolicy gapPolicy;
-    private Model<T> model;
+    private Model model;
 
     public InferencePipelineAggregator(String name, Map<String, String> bucketPathMap, Map<String, Object> metaData,
                                        BucketHelpers.GapPolicy gapPolicy,
-                                       InferenceConfigUpdate<T> configUpdate,
-                                       Model<T> model) {
+                                       InferenceConfigUpdate configUpdate,
+                                       Model model) {
         super(name, bucketPathMap.values().toArray(new String[] {}), metaData);
         this.bucketPathMap = bucketPathMap;
         this.gapPolicy = gapPolicy;

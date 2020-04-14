@@ -10,6 +10,11 @@ setup:
           {
             "description": "super complex model for tests",
             "input": {"field_names": ["decider"]},
+            "inference_config": {
+              "regression": {
+                "results_field": "regression-value"
+              }
+            },
             "definition": {
               "trained_model": {
                 "ensemble": {
@@ -62,6 +67,11 @@ setup:
               "field_names": [
                 "size"
               ]
+            },
+            "inference_config": {
+               "classification": {
+                 "num_top_classes": 1
+               }
             },
             "definition": {
               "trained_model": {

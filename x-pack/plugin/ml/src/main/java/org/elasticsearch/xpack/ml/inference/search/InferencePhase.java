@@ -44,6 +44,7 @@ public class InferencePhase implements FetchSubPhase {
     }
 
     @Override
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public void hitsExecute(SearchContext searchContext, SearchHit[] hits) {
         SearchExtBuilder inferenceBuilder = searchContext.getSearchExt(InferenceSearchExtBuilder.NAME);
         if (inferenceBuilder == null) {
@@ -99,7 +100,6 @@ public class InferencePhase implements FetchSubPhase {
 
                 addFieldsToHit(hit, infer.writeResultToMap(infBuilder.getTargetField()));
             } catch (Exception e) {
-                continue;
             }
 
         }

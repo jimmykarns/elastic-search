@@ -17,7 +17,6 @@ import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceConfig;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.RegressionConfigTests;
 import org.elasticsearch.xpack.ml.inference.search.InferenceSearchExtBuilder;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,7 +41,7 @@ public class InferenceSearchExtBuilderTests extends AbstractSerializingTestCase<
             config = RegressionConfigTests.randomRegressionConfig();
         }
 
-        return new InferenceSearchExtBuilder(randomAlphaOfLength(8), Collections.singletonList(config),
+        return new InferenceSearchExtBuilder(randomAlphaOfLength(8), config,
                 randomAlphaOfLength(6), randomMapOrNull());
     }
 

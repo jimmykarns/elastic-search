@@ -19,7 +19,6 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.search.aggregations.pipeline.AbstractPipelineAggregationBuilder;
 import org.elasticsearch.search.aggregations.pipeline.BucketHelpers;
-import org.elasticsearch.search.aggregations.pipeline.BucketScriptPipelineAggregationBuilder;
 import org.elasticsearch.search.aggregations.pipeline.PipelineAggregator;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.ClassificationConfig;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.ClassificationConfigUpdate;
@@ -47,6 +46,7 @@ public class InferencePipelineAggregationBuilder extends AbstractPipelineAggrega
     public static String NAME = "inference-pipeline-agg";
 
     public static final ParseField MODEL_ID = new ParseField("model_id");
+    public static final ParseField BUCKET_PATH_MAP = new ParseField("bucket_path_map");
     private static final ParseField INFERENCE_CONFIG = new ParseField("inference_config");
 
     @SuppressWarnings("unchecked")
@@ -57,8 +57,8 @@ public class InferencePipelineAggregationBuilder extends AbstractPipelineAggrega
     );
 
     static {
-        PARSER.declareField(constructorArg(), (p, c) -> p.mapStrings(),
-            BUCKETS_PATH_FIELD, ObjectParser.ValueType.OBJECT);
+        PARSER.declareObject(constructorArg(), (p, c) -> p.mapStrings(), BUCKET_PATH_MAP);
+        PARSER.declareStringArray((a,b) -> {;}, BUCKETS_PATH_FIELD);
         PARSER.declareString(InferencePipelineAggregationBuilder::setModelId, MODEL_ID);
         PARSER.declareNamedObject(InferencePipelineAggregationBuilder::setInferenceConfig,
             (p, c, n) -> p.namedObject(LenientlyParsedInferenceConfig.class, n, c), INFERENCE_CONFIG);
@@ -119,14 +119,13 @@ public class InferencePipelineAggregationBuilder extends AbstractPipelineAggrega
         gapPolicy.writeTo(out);
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected PipelineAggregator createInternal(Map<String, Object> metaData) {
 
-        SetOnce<Model<? extends InferenceConfig>> model = new SetOnce<>();
+        SetOnce<Model> model = new SetOnce<>();
         SetOnce<Exception> error = new SetOnce<>();
         CountDownLatch latch = new CountDownLatch(1);
-        ActionListener<Model<? extends InferenceConfig>> listener = new LatchedActionListener<>(
+        ActionListener<Model> listener = new LatchedActionListener<>(
             ActionListener.wrap(model::set, error::set), latch);
 
         modelLoadingService.get().getModelAndCache(modelId, listener);
@@ -141,7 +140,7 @@ public class InferencePipelineAggregationBuilder extends AbstractPipelineAggrega
             throw new RuntimeException(error.get());
         }
 
-        InferenceConfigUpdate<? extends InferenceConfig> update;
+        InferenceConfigUpdate update;
         if (inferenceConfig instanceof RegressionConfig) {
             update = RegressionConfigUpdate.fromConfig((RegressionConfig)inferenceConfig);
         } else if (inferenceConfig instanceof ClassificationConfig) {
@@ -159,9 +158,13 @@ public class InferencePipelineAggregationBuilder extends AbstractPipelineAggrega
     @Override
     protected XContentBuilder internalXContent(XContentBuilder builder, Params params) throws IOException {
         builder.field(MODEL_ID.getPreferredName(), modelId);
+        builder.field(BUCKET_PATH_MAP.getPreferredName(), bucketPathMap);
         if (inferenceConfig != null) {
-            builder.field(INFERENCE_CONFIG.getPreferredName(), inferenceConfig);
+            builder.startObject(INFERENCE_CONFIG.getPreferredName());
+            builder.field(inferenceConfig.getName(), inferenceConfig);
+            builder.endObject();
         }
+        builder.field(GAP_POLICY.getPreferredName(), gapPolicy.getName());
         return builder;
     }
 
@@ -187,6 +190,7 @@ public class InferencePipelineAggregationBuilder extends AbstractPipelineAggrega
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
         if (super.equals(obj) == false) return false;
+
         InferencePipelineAggregationBuilder other = (InferencePipelineAggregationBuilder) obj;
         return Objects.equals(bucketPathMap, other.bucketPathMap)
             && Objects.equals(modelId, other.modelId)
