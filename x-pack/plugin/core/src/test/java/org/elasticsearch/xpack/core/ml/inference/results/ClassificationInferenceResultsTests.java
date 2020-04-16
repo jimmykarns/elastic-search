@@ -10,6 +10,7 @@ import org.elasticsearch.ingest.IngestDocument;
 import org.elasticsearch.test.AbstractWireSerializingTestCase;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.ClassificationConfig;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.ClassificationConfigTests;
+import org.elasticsearch.xpack.core.ml.inference.trainedmodel.PredictionFieldType;
 import org.elasticsearch.xpack.core.ml.utils.MapHelper;
 
 import java.util.Arrays;
@@ -45,7 +46,7 @@ public class ClassificationInferenceResultsTests extends AbstractWireSerializing
     }
 
     private static ClassificationInferenceResults.TopClassEntry createRandomClassEntry() {
-        return new ClassificationInferenceResults.TopClassEntry(randomAlphaOfLength(10), randomDouble());
+        return new ClassificationInferenceResults.TopClassEntry(randomAlphaOfLength(10), randomDouble(), randomDouble());
     }
 
     public void testWriteResultsWithClassificationLabel() {
@@ -71,13 +72,13 @@ public class ClassificationInferenceResultsTests extends AbstractWireSerializing
     @SuppressWarnings("unchecked")
     public void testWriteResultsWithTopClasses() {
         List<ClassificationInferenceResults.TopClassEntry> entries = Arrays.asList(
-            new ClassificationInferenceResults.TopClassEntry("foo", 0.7),
-            new ClassificationInferenceResults.TopClassEntry("bar", 0.2),
-            new ClassificationInferenceResults.TopClassEntry("baz", 0.1));
+            new ClassificationInferenceResults.TopClassEntry("foo", 0.7, 0.7),
+            new ClassificationInferenceResults.TopClassEntry("bar", 0.2, 0.2),
+            new ClassificationInferenceResults.TopClassEntry("baz", 0.1, 0.1));
         ClassificationInferenceResults result = new ClassificationInferenceResults(1.0,
             "foo",
             entries,
-            new ClassificationConfig(3, "my_results", "bar"));
+            new ClassificationConfig(3, "my_results", "bar", null, PredictionFieldType.STRING));
         IngestDocument document = new IngestDocument(new HashMap<>(), new HashMap<>());
         result.writeResult(document, "result_field");
 
@@ -95,13 +96,13 @@ public class ClassificationInferenceResultsTests extends AbstractWireSerializing
     @SuppressWarnings("unchecked")
     public void testWriteResultsToMapWithTopClasses() {
         List<ClassificationInferenceResults.TopClassEntry> entries = Arrays.asList(
-                new ClassificationInferenceResults.TopClassEntry("foo", 0.7),
-                new ClassificationInferenceResults.TopClassEntry("bar", 0.2),
-                new ClassificationInferenceResults.TopClassEntry("baz", 0.1));
+                new ClassificationInferenceResults.TopClassEntry("foo", 0.7, 0.7),
+                new ClassificationInferenceResults.TopClassEntry("bar", 0.2, 0.2),
+                new ClassificationInferenceResults.TopClassEntry("baz", 0.1, 0.1));
         ClassificationInferenceResults result = new ClassificationInferenceResults(1.0,
                 "foo",
                 entries,
-                new ClassificationConfig(3, "my_results", "bar"));
+                new ClassificationConfig(3, "my_results", "bar", null, PredictionFieldType.NUMBER));
         Map<String, Object> resultsDoc = result.writeResultToMap("result_field");
 
         List<?> list = (List<?>) MapHelper.dig("result_field.bar", resultsDoc);
@@ -128,7 +129,7 @@ public class ClassificationInferenceResultsTests extends AbstractWireSerializing
             "foo",
             Collections.emptyList(),
             importanceList,
-            new ClassificationConfig(0, "predicted_value", "top_classes", 3));
+            new ClassificationConfig(0, "predicted_value", "top_classes", 3, PredictionFieldType.STRING));
         IngestDocument document = new IngestDocument(new HashMap<>(), new HashMap<>());
         result.writeResult(document, "result_field");
 
