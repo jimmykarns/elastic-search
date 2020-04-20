@@ -8,6 +8,7 @@ package org.elasticsearch.xpack.core.ml.inference.results;
 import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.ingest.IngestDocument;
 import org.elasticsearch.xpack.core.ml.utils.ExceptionsHelper;
 
@@ -66,8 +67,13 @@ public class WarningInferenceResults implements InferenceResults {
     }
 
     @Override
+    public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+        builder.field(NAME, warning);
+        return builder;
+    }
+
+    @Override
     public String getWriteableName() {
         return NAME;
     }
-
 }

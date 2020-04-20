@@ -27,6 +27,21 @@ import static org.hamcrest.Matchers.hasSize;
 
 public class ClassificationInferenceResultsTests extends AbstractWireSerializingTestCase<ClassificationInferenceResults> {
 
+//    @SuppressWarnings("unchecked")
+//    private static final ConstructingObjectParser<ClassificationInferenceResults, Void> PARSER =
+//        new ConstructingObjectParser<>("classification_result",
+//            a -> new ClassificationInferenceResults((Double) a[0], (String) a[1],
+//                (List<ClassificationInferenceResults.TopClassEntry>) a[2],
+//                (InferenceConfig) a[3])
+//        );
+//
+//    static {
+//        PARSER.declareString(constructorArg(), new ParseField(SingleValueInferenceResults.FEATURE_NAME));
+//        PARSER.declareDouble(constructorArg(), new ParseField(SingleValueInferenceResults.IMPORTANCE));
+//        PARSER.declareObject(optionalConstructorArg(), (p, c) -> p.map(HashMap::new, XContentParser::doubleValue),
+//            new ParseField(FeatureImportance.CLASS_IMPORTANCE));
+//    }
+
     public static ClassificationInferenceResults createRandomResults() {
         Supplier<FeatureImportance> featureImportanceCtor = randomBoolean() ?
             FeatureImportanceTests::randomClassification :
@@ -160,4 +175,9 @@ public class ClassificationInferenceResultsTests extends AbstractWireSerializing
     protected Writeable.Reader<ClassificationInferenceResults> instanceReader() {
         return ClassificationInferenceResults::new;
     }
+
+//    @Override
+//    protected ClassificationInferenceResults doParseInstance(XContentParser parser) throws IOException {
+//        return PARSER.apply(parser, null);
+//    }
 }

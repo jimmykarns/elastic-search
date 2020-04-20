@@ -6,6 +6,7 @@
 
 package org.elasticsearch.xpack.ml.inference.aggs;
 
+import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.search.aggregations.InternalAggregation;
@@ -14,6 +15,7 @@ import org.elasticsearch.xpack.core.ml.inference.results.InferenceResults;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class InternalInferenceAggregation extends InternalAggregation {
 
@@ -23,6 +25,11 @@ public class InternalInferenceAggregation extends InternalAggregation {
                                            InferenceResults inferenceResult) {
         super(name, metadata);
         this.inferenceResult = inferenceResult;
+    }
+
+    protected InternalInferenceAggregation(StreamInput in) throws IOException {
+        super(in);
+        inferenceResult = in.readNamedWriteable(InferenceResults.class);
     }
 
     @Override
@@ -37,16 +44,30 @@ public class InternalInferenceAggregation extends InternalAggregation {
 
     @Override
     public Object getProperty(List<String> path) {
-        return throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public XContentBuilder doXContentBody(XContentBuilder builder, Params params) throws IOException {
-        return null;
+        return inferenceResult.toXContent(builder, params);
     }
 
     @Override
     public String getWriteableName() {
         return null;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), inferenceResult);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        if (super.equals(obj) == false) return false;
+        InternalInferenceAggregation other = (InternalInferenceAggregation) obj;
+        return Objects.equals(inferenceResult, other.inferenceResult);
     }
 }

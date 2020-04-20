@@ -5,17 +5,32 @@
  */
 package org.elasticsearch.xpack.core.ml.inference.results;
 
+import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.io.stream.Writeable;
+import org.elasticsearch.common.xcontent.ConstructingObjectParser;
+import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.ingest.IngestDocument;
-import org.elasticsearch.test.AbstractWireSerializingTestCase;
+import org.elasticsearch.test.AbstractSerializingTestCase;
 import org.elasticsearch.xpack.core.ml.utils.MapHelper;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.elasticsearch.common.xcontent.ConstructingObjectParser.constructorArg;
 import static org.hamcrest.Matchers.equalTo;
 
-public class WarningInferenceResultsTests extends AbstractWireSerializingTestCase<WarningInferenceResults> {
+public class WarningInferenceResultsTests extends AbstractSerializingTestCase<WarningInferenceResults> {
+
+    @SuppressWarnings("unchecked")
+    private static final ConstructingObjectParser<WarningInferenceResults, Void> PARSER =
+        new ConstructingObjectParser<>("inference_warning",
+            a -> new WarningInferenceResults((String) a[0])
+        );
+
+    static {
+        PARSER.declareString(constructorArg(), new ParseField(WarningInferenceResults.NAME));
+    }
 
     public static WarningInferenceResults createRandomResults() {
         return new WarningInferenceResults(randomAlphaOfLength(10));
@@ -45,5 +60,10 @@ public class WarningInferenceResultsTests extends AbstractWireSerializingTestCas
     @Override
     protected Writeable.Reader<WarningInferenceResults> instanceReader() {
         return WarningInferenceResults::new;
+    }
+
+    @Override
+    protected WarningInferenceResults doParseInstance(XContentParser parser) throws IOException {
+        return PARSER.apply(parser, null);
     }
 }
