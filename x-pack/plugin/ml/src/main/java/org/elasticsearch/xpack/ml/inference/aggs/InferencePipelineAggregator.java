@@ -90,8 +90,8 @@ public class InferencePipelineAggregator extends PipelineAggregator {
                 (p) -> (InternalAggregation) p).collect(Collectors.toList());
 
 
-            InternalSimpleValue simpleValue = new InternalSimpleValue(name(), 10.1, DocValueFormat.RAW, metadata());
-            aggs.add(simpleValue);
+            InternalInferenceAggregation infResult = new InternalInferenceAggregation(name(), metadata(), inference);
+            aggs.add(infResult);
             InternalMultiBucketAggregation.InternalBucket newBucket = originalAgg.createBucket(new InternalAggregations(aggs),
                 bucket);
             newBuckets.add(newBucket);
