@@ -84,6 +84,7 @@ public class FeatureImportance implements Writeable, ToXContentObject {
 
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
+        builder.startObject();
         builder.field(FEATURE_NAME, featureName);
         builder.field(IMPORTANCE, importance);
         if (classImportance != null && classImportance.isEmpty() == false) {
@@ -93,6 +94,7 @@ public class FeatureImportance implements Writeable, ToXContentObject {
             }
             builder.endObject();
         }
+        builder.endObject();
         return builder;
     }
 
