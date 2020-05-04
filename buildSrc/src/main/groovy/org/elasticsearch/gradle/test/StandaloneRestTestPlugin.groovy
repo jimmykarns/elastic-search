@@ -22,6 +22,7 @@ package org.elasticsearch.gradle.test
 
 import groovy.transform.CompileStatic
 import org.elasticsearch.gradle.BuildPlugin
+import org.elasticsearch.gradle.ElasticsearchJavaPlugin
 import org.elasticsearch.gradle.ExportElasticsearchBuildResourcesTask
 import org.elasticsearch.gradle.info.BuildParams
 import org.elasticsearch.gradle.info.GlobalBuildInfoPlugin
@@ -62,10 +63,10 @@ class StandaloneRestTestPlugin implements Plugin<Project> {
 
         project.getTasks().create("buildResources", ExportElasticsearchBuildResourcesTask)
         BuildPlugin.configureRepositories(project)
-        BuildPlugin.configureTestTasks(project)
-        BuildPlugin.configureInputNormalization(project)
+        ElasticsearchJavaPlugin.configureTestTasks(project)
+        ElasticsearchJavaPlugin.configureInputNormalization(project)
         BuildPlugin.configureFips140(project)
-        BuildPlugin.configureCompile(project)
+        ElasticsearchJavaPlugin.configureCompile(project)
 
         project.extensions.getByType(JavaPluginExtension).sourceCompatibility = BuildParams.minimumRuntimeVersion
         project.extensions.getByType(JavaPluginExtension).targetCompatibility = BuildParams.minimumRuntimeVersion
@@ -76,7 +77,7 @@ class StandaloneRestTestPlugin implements Plugin<Project> {
         // need to apply plugin after test source sets are created
         project.pluginManager.apply(RestResourcesPlugin)
 
-        project.tasks.withType(Test) { Test test ->
+        project.tasks.withType(Test).configureEach { Test test ->
             test.testClassesDirs = testSourceSet.output.classesDirs
             test.classpath = testSourceSet.runtimeClasspath
         }

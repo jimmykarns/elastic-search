@@ -858,14 +858,9 @@ public class RestHighLevelClientTests extends ESTestCase {
             "indices.put_alias",
             "render_search_template",
             "scripts_painless_execute",
-            "cluster.put_component_template",
-            "cluster.get_component_template",
-            "cluster.delete_component_template",
             "indices.create_data_stream",
             "indices.get_data_streams",
-            "indices.delete_data_stream",
-            "indices.put_index_template",
-            "indices.delete_index_template"
+            "indices.delete_data_stream"
         };
         //These API are not required for high-level client feature completeness
         String[] notRequiredApi = new String[] {
@@ -874,6 +869,8 @@ public class RestHighLevelClientTests extends ESTestCase {
             "cluster.reroute",
             "cluster.state",
             "cluster.stats",
+            "cluster.post_voting_config_exclusions",
+            "cluster.delete_voting_config_exclusions",
             "indices.shard_stores",
             "indices.upgrade",
             "indices.recovery",
