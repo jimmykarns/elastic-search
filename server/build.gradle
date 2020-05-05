@@ -337,6 +337,9 @@ task integTest(type: Test) {
   mustRunAfter test
 
   include '**/*IT.class'
+  if (org.elasticsearch.gradle.info.BuildParams.isSnapshotBuild() == false) {
+    systemProperty 'es.datastreams_feature_enabled', 'true'
+  }
 }
 
 check.dependsOn integTest

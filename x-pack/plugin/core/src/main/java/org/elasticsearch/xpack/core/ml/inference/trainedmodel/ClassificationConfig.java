@@ -215,6 +215,7 @@ public class ClassificationConfig implements LenientlyParsedInferenceConfig, Str
             this.topClassesResultsField = config.topClassesResultsField;
             this.resultsField = config.resultsField;
             this.numTopFeatureImportanceValues = config.numTopFeatureImportanceValues;
+            this.predictionFieldType = config.predictionFieldType;
         }
 
         public Builder setNumTopClasses(Integer numTopClasses) {
