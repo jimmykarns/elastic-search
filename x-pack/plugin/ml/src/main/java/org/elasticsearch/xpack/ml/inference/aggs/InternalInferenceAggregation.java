@@ -44,7 +44,9 @@ public class InternalInferenceAggregation extends InternalAggregation {
 
     @Override
     public Object getProperty(List<String> path) {
-        throw new UnsupportedOperationException();
+//        throw new UnsupportedOperationException(String.join(".", path));
+        Map<String, Object> inferenceResult = this.inferenceResult.writeResultToMap("p");
+
     }
 
     @Override
