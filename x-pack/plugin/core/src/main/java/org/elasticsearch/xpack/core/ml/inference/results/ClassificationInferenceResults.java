@@ -148,12 +148,9 @@ public class ClassificationInferenceResults extends SingleValueInferenceResults 
     }
 
     @Override
-    public Map<String, Object> writeResultToMap(String parentResultField) {
-        Map<String, Object> parentField = new HashMap<>();
+    public Map<String, Object> writeResultToMap() {
         Map<String, Object> results = new HashMap<>();
-        parentField.put(parentResultField, results);
-
-        results.put(resultsField, valueAsString());
+        results.put(resultsField, value());
         if (topClasses.size() > 0) {
             results.put(topNumClassesField, topClasses.stream().map(TopClassEntry::asValueMap).collect(Collectors.toList()));
         }
@@ -161,9 +158,8 @@ public class ClassificationInferenceResults extends SingleValueInferenceResults 
             results.put(FEATURE_IMPORTANCE, getFeatureImportance());
         }
 
-        return parentField;
+        return results;
     }
-
 
     @Override
     public String getWriteableName() {

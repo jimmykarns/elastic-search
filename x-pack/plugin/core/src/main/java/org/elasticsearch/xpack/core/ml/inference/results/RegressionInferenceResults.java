@@ -28,7 +28,7 @@ public class RegressionInferenceResults extends SingleValueInferenceResults {
     private final String resultsField;
 
     public RegressionInferenceResults(double value, InferenceConfig config) {
-        this(value, (RegressionConfig) config, Collections.emptyList());
+        this(value, config, Collections.emptyList());
     }
 
     public RegressionInferenceResults(double value, InferenceConfig config, List<FeatureImportance> featureImportance) {
@@ -86,17 +86,15 @@ public class RegressionInferenceResults extends SingleValueInferenceResults {
     }
 
     @Override
-    public Map<String, Object> writeResultToMap(String parentResultField) {
-        Map<String, Object> parentResult = new HashMap<>();
+    public Map<String, Object> writeResultToMap() {
         Map<String, Object> result = new HashMap<>();
-        parentResult.put(parentResultField, result);
 
         result.put(resultsField, value());
         if (getFeatureImportance().size() > 0) {
             result.put("feature_importance", getFeatureImportance());
         }
 
-        return parentResult;
+        return result;
     }
 
     @Override
