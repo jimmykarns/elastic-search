@@ -6,17 +6,12 @@
 package org.elasticsearch.xpack.core.ml.inference.results;
 
 import org.elasticsearch.common.io.stream.Writeable;
-import org.elasticsearch.common.xcontent.ConstructingObjectParser;
-import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.ingest.IngestDocument;
-import org.elasticsearch.test.AbstractSerializingTestCase;
 import org.elasticsearch.test.AbstractWireSerializingTestCase;
-import org.elasticsearch.xpack.core.ml.inference.trainedmodel.InferenceConfig;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.RegressionConfig;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.RegressionConfigTests;
 import org.elasticsearch.xpack.core.ml.utils.MapHelper;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,19 +23,6 @@ import static org.hamcrest.Matchers.hasSize;
 
 
 public class RegressionInferenceResultsTests extends AbstractWireSerializingTestCase<RegressionInferenceResults> {
-
-//    @SuppressWarnings("unchecked")
-//    private static final ConstructingObjectParser<RegressionInferenceResultsBuilder, InferenceConfig> PARSER =
-//        new ConstructingObjectParser<>("regression_result", false,
-//            (args, context) -> new RegressionInferenceResultsBuilder((Double) args[0], (String) args[1]);
-//        );
-//
-//    static {
-//        PARSER.declareString(constructorArg(), new ParseField(SingleValueInferenceResults.FEATURE_NAME));
-//        PARSER.declareDouble(constructorArg(), new ParseField(SingleValueInferenceResults.IMPORTANCE));
-//        PARSER.declareObject(optionalConstructorArg(), (p, c) -> p.map(HashMap::new, XContentParser::doubleValue),
-//            new ParseField(FeatureImportance.CLASS_IMPORTANCE));
-//    }
 
     public static RegressionInferenceResults createRandomResults() {
         return new RegressionInferenceResults(randomDouble(),
@@ -102,11 +84,6 @@ public class RegressionInferenceResultsTests extends AbstractWireSerializingTest
     protected Writeable.Reader<RegressionInferenceResults> instanceReader() {
         return RegressionInferenceResults::new;
     }
-
-//    @Override
-//    protected RegressionInferenceResults doParseInstance(XContentParser parser) throws IOException {
-//        return PARSER.apply(parser, null).build();
-//    }
 
     private static class RegressionInferenceResultsBuilder {
 
