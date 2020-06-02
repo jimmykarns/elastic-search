@@ -27,10 +27,6 @@ restResources {
 
 testClusters.integTest {
   setting 'xpack.license.self_generated.type', 'trial'
+  setting 'indices.breaker.request.limit', '25kb'
   testDistribution = 'DEFAULT'
-}
-
-licenseHeaders {
-  // This class was sourced from apache lucene's sandbox module tests
-  excludes << 'org/apache/lucene/geo/XShapeTestUtil.java'
 }
