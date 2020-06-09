@@ -106,6 +106,7 @@ public class SignificantTermsAggregatorFactory extends ValuesSourceAggregatorFac
                                     boolean collectsFromSingleBucket,
                                     Map<String, Object> metadata) throws IOException {
 
+                assert collectsFromSingleBucket;
                 ExecutionMode execution = null;
                 if (executionHint != null) {
                     execution = ExecutionMode.fromString(executionHint, deprecationLogger);
@@ -124,7 +125,12 @@ public class SignificantTermsAggregatorFactory extends ValuesSourceAggregatorFac
                 }
 
                 return execution.create(name, factories, valuesSource, format, bucketCountThresholds, includeExclude, context, parent,
-                    significanceHeuristic, sigTermsFactory, collectsFromSingleBucket, metadata);
+                    significanceHeuristic, sigTermsFactory, metadata);
+            }
+
+            @Override
+            public boolean needsToCollectFromSingleBucket() {
+                return true;
             }
         };
     }
@@ -170,6 +176,11 @@ public class SignificantTermsAggregatorFactory extends ValuesSourceAggregatorFac
                     agg -> agg.new SignificantLongTermsResults(sigTermsFactory, significanceHeuristic, collectsFromSingleBucket),
                     numericValuesSource, format, null, bucketCountThresholds, context, parent, SubAggCollectionMode.BREADTH_FIRST,
                     longFilter, collectsFromSingleBucket, metadata);
+            }
+
+            @Override
+            public boolean needsToCollectFromSingleBucket() {
+                return false;
             }
         };
     }
@@ -298,6 +309,9 @@ public class SignificantTermsAggregatorFactory extends ValuesSourceAggregatorFac
                 aggregatorSupplier.getClass().toString() + "]");
         }
         SignificantTermsAggregatorSupplier sigTermsAggregatorSupplier = (SignificantTermsAggregatorSupplier) aggregatorSupplier;
+        if (collectsFromSingleBucket == false && sigTermsAggregatorSupplier.needsToCollectFromSingleBucket()) {
+            return asMultiBucketAggregator(this, searchContext, parent);
+        }
 
         numberOfAggregatorsCreated++;
         BucketCountThresholds bucketCountThresholds = new BucketCountThresholds(this.bucketCountThresholds);
@@ -338,26 +352,11 @@ public class SignificantTermsAggregatorFactory extends ValuesSourceAggregatorFac
                               Aggregator parent,
                               SignificanceHeuristic significanceHeuristic,
                               SignificantTermsAggregatorFactory termsAggregatorFactory,
-                              boolean collectsFromSingleBucket,
                               Map<String, Object> metadata) throws IOException {
 
                 final IncludeExclude.StringFilter filter = includeExclude == null ? null : includeExclude.convertToStringFilter(format);
-                return new MapStringTermsAggregator(
-                    name,
-                    factories,
-                    a -> a.new SignificantTermsResults(termsAggregatorFactory, significanceHeuristic),
-                    valuesSource,
-                    null,
-                    format,
-                    bucketCountThresholds,
-                    filter,
-                    aggregationContext,
-                    parent,
-                    SubAggCollectionMode.BREADTH_FIRST,
-                    false,
-                    collectsFromSingleBucket,
-                    metadata
-                );
+                return new SignificantStringTermsAggregator(name, factories, valuesSource, format, bucketCountThresholds, filter,
+                        aggregationContext, parent, significanceHeuristic, termsAggregatorFactory, metadata);
 
             }
 
@@ -375,7 +374,6 @@ public class SignificantTermsAggregatorFactory extends ValuesSourceAggregatorFac
                               Aggregator parent,
                               SignificanceHeuristic significanceHeuristic,
                               SignificantTermsAggregatorFactory termsAggregatorFactory,
-                              boolean collectsFromSingleBucket,
                               Map<String, Object> metadata) throws IOException {
 
                 final IncludeExclude.OrdinalsFilter filter = includeExclude == null ? null : includeExclude.convertToOrdinalsFilter(format);
@@ -406,7 +404,6 @@ public class SignificantTermsAggregatorFactory extends ValuesSourceAggregatorFac
                     remapGlobalOrd,
                     SubAggCollectionMode.BREADTH_FIRST,
                     false,
-                    collectsFromSingleBucket,
                     metadata
                 );
             }
@@ -441,7 +438,6 @@ public class SignificantTermsAggregatorFactory extends ValuesSourceAggregatorFac
                                    Aggregator parent,
                                    SignificanceHeuristic significanceHeuristic,
                                    SignificantTermsAggregatorFactory termsAggregatorFactory,
-                                   boolean collectsFromSingleBucket,
                                    Map<String, Object> metadata) throws IOException;
 
         @Override

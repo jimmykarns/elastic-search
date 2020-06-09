@@ -60,7 +60,6 @@ import org.elasticsearch.indices.recovery.MultiFileTransfer;
 import org.elasticsearch.indices.recovery.MultiFileWriter;
 import org.elasticsearch.indices.recovery.RecoveryState;
 import org.elasticsearch.repositories.IndexId;
-import org.elasticsearch.repositories.IndexMetaDataGenerations;
 import org.elasticsearch.repositories.Repository;
 import org.elasticsearch.repositories.RepositoryData;
 import org.elasticsearch.repositories.ShardGenerations;
@@ -191,7 +190,7 @@ public class CcrRepository extends AbstractLifecycleComponent implements Reposit
     }
 
     @Override
-    public IndexMetadata getSnapshotIndexMetaData(RepositoryData repositoryData, SnapshotId snapshotId, IndexId index) {
+    public IndexMetadata getSnapshotIndexMetadata(SnapshotId snapshotId, IndexId index) throws IOException {
         assert SNAPSHOT_ID.equals(snapshotId) : "RemoteClusterRepository only supports " + SNAPSHOT_ID + " as the SnapshotId";
         String leaderIndex = index.getName();
         Client remoteClient = getRemoteClusterClient();
@@ -251,8 +250,7 @@ public class CcrRepository extends AbstractLifecycleComponent implements Reposit
                 Index index = remoteIndices.get(indexName).getIndex();
                 indexSnapshots.put(new IndexId(indexName, index.getUUID()), Collections.singletonList(snapshotId));
             }
-            return new RepositoryData(1, copiedSnapshotIds, snapshotStates, snapshotVersions, indexSnapshots,
-                ShardGenerations.EMPTY, IndexMetaDataGenerations.EMPTY);
+            return new RepositoryData(1, copiedSnapshotIds, snapshotStates, snapshotVersions, indexSnapshots, ShardGenerations.EMPTY);
         });
     }
 

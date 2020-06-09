@@ -184,6 +184,7 @@ public class AdjacencyMatrixAggregator extends BucketsAggregator {
                 totalBucketsToBuild++;
             }
         }
+        consumeBucketsAndMaybeBreak(totalBucketsToBuild);
         long[] bucketOrdsToBuild = new long[totalBucketsToBuild];
         int builtBucketIndex = 0;
         for (int ord = 0; ord < maxOrd; ord++) {

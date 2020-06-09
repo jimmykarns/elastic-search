@@ -43,4 +43,6 @@ interface SignificantTermsAggregatorSupplier extends AggregatorSupplier {
                      SignificantTermsAggregatorFactory sigTermsFactory,
                      boolean collectsFromSingleBucket,
                      Map<String, Object> metadata) throws IOException;
+
+    boolean needsToCollectFromSingleBucket();
 }

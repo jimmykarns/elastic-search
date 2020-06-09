@@ -49,22 +49,17 @@ public class BranchingStep extends ClusterStateActionStep {
         this.predicateValue = new SetOnce<>();
     }
 
-    @Override
-    public boolean isRetryable() {
-        return true;
-    }
-
-    @Override
-    public ClusterState performAction(Index index, ClusterState clusterState) {
-        IndexMetadata indexMetadata = clusterState.metadata().index(index);
-        if (indexMetadata == null) {
-            // Index must have been since deleted, ignore it
-            logger.debug("[{}] lifecycle action for index [{}] executed but index no longer exists", getKey().getAction(), index.getName());
-            return clusterState;
-        }
-        predicateValue.set(predicate.test(index, clusterState));
-        return clusterState;
-    }
+   @Override
+   public ClusterState performAction(Index index, ClusterState clusterState) {
+       IndexMetadata indexMetadata = clusterState.metadata().index(index);
+       if (indexMetadata == null) {
+           // Index must have been since deleted, ignore it
+           logger.debug("[{}] lifecycle action for index [{}] executed but index no longer exists", getKey().getAction(), index.getName());
+           return clusterState;
+       }
+       predicateValue.set(predicate.test(index, clusterState));
+       return clusterState;
+   }
 
     /**
      * This method returns the next step to execute based on the predicate. If

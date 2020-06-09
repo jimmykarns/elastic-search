@@ -425,10 +425,6 @@ public class InternalSqlScriptUtils extends InternalQlScriptUtils {
         return (String) SubstringFunctionProcessor.doProcess(s, start, length);
     }
 
-    public static String trim(String s) {
-        return (String) StringOperation.TRIM.apply(s);
-    }
-
     public static String ucase(String s) {
         return (String) StringOperation.UCASE.apply(s);
     }

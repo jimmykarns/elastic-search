@@ -36,42 +36,24 @@ public class ModelPlotConfigWriterTests extends ESTestCase {
 
         writer.write();
 
-        verify(this.writer).write("boundspercentile = 95.0\nterms = \nannotations_enabled = true\n");
+        verify(this.writer).write("boundspercentile = 95.0\nterms = \n");
     }
 
     public void testWrite_GivenEnabledConfigWithTerms() throws IOException {
-        ModelPlotConfig modelPlotConfig = new ModelPlotConfig(true, "foo,bar", false);
+        ModelPlotConfig modelPlotConfig = new ModelPlotConfig(true, "foo,bar");
         ModelPlotConfigWriter writer = new ModelPlotConfigWriter(modelPlotConfig, this.writer);
 
         writer.write();
 
-        verify(this.writer).write("boundspercentile = 95.0\nterms = foo,bar\nannotations_enabled = false\n");
+        verify(this.writer).write("boundspercentile = 95.0\nterms = foo,bar\n");
     }
 
     public void testWrite_GivenDisabledConfigWithTerms() throws IOException {
-        ModelPlotConfig modelPlotConfig = new ModelPlotConfig(false, "foo,bar", false);
+        ModelPlotConfig modelPlotConfig = new ModelPlotConfig(false, "foo,bar");
         ModelPlotConfigWriter writer = new ModelPlotConfigWriter(modelPlotConfig, this.writer);
 
         writer.write();
 
-        verify(this.writer).write("boundspercentile = -1.0\nterms = foo,bar\nannotations_enabled = false\n");
-    }
-
-    public void testWrite_GivenEnabledConfigWithEnabledAnnotations() throws IOException {
-        ModelPlotConfig modelPlotConfig = new ModelPlotConfig(true, null, true);
-        ModelPlotConfigWriter writer = new ModelPlotConfigWriter(modelPlotConfig, this.writer);
-
-        writer.write();
-
-        verify(this.writer).write("boundspercentile = 95.0\nterms = \nannotations_enabled = true\n");
-    }
-
-    public void testWrite_GivenDisabledConfigWithEnabledAnnotations() throws IOException {
-        ModelPlotConfig modelPlotConfig = new ModelPlotConfig(false, null, true);
-        ModelPlotConfigWriter writer = new ModelPlotConfigWriter(modelPlotConfig, this.writer);
-
-        writer.write();
-
-        verify(this.writer).write("boundspercentile = -1.0\nterms = \nannotations_enabled = true\n");
+        verify(this.writer).write("boundspercentile = -1.0\nterms = foo,bar\n");
     }
 }

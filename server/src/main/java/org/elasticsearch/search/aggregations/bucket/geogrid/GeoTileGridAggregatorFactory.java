@@ -83,18 +83,21 @@ public class GeoTileGridAggregatorFactory extends ValuesSourceAggregatorFactory 
             throw new AggregationExecutionException("Registry miss-match - expected "
                 + GeoGridAggregatorSupplier.class.getName() + ", found [" + aggregatorSupplier.getClass().toString() + "]");
         }
+        if (collectsFromSingleBucket == false) {
+            return asMultiBucketAggregator(this, searchContext, parent);
+        }
         return ((GeoGridAggregatorSupplier) aggregatorSupplier).build(name, factories, valuesSource, precision, geoBoundingBox,
-            requiredSize, shardSize, searchContext, parent, collectsFromSingleBucket, metadata);
+            requiredSize, shardSize, searchContext, parent, metadata);
     }
 
     static void registerAggregators(ValuesSourceRegistry.Builder builder) {
         builder.register(GeoTileGridAggregationBuilder.NAME, CoreValuesSourceType.GEOPOINT,
             (GeoGridAggregatorSupplier) (name, factories, valuesSource, precision, geoBoundingBox, requiredSize, shardSize,
-                                         aggregationContext, parent, collectsFromSingleBucket, metadata) -> {
+                                         aggregationContext, parent, metadata) -> {
                 CellIdSource cellIdSource = new CellIdSource((ValuesSource.GeoPoint) valuesSource, precision, geoBoundingBox,
                     GeoTileUtils::longEncode);
                 return new GeoTileGridAggregator(name, factories, cellIdSource, requiredSize, shardSize, aggregationContext,
-                    parent, collectsFromSingleBucket, metadata);
+                    parent, metadata);
             });
     }
 }

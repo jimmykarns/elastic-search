@@ -15,17 +15,10 @@ public class DeleteExpiredDataActionRequestTests extends AbstractBWCWireSerializ
 
     @Override
     protected Request createTestInstance() {
-        Request request = new Request();
-        if (randomBoolean()) {
-            request.setRequestsPerSecond(randomFloat());
-        }
-        if (randomBoolean()) {
-            request.setTimeout(TimeValue.parseTimeValue(randomTimeValue(), "test"));
-        }
-        if (randomBoolean()) {
-            request.setJobId(randomAlphaOfLength(5));
-        }
-        return request;
+        return new Request(
+            randomBoolean() ? null : randomFloat(),
+            randomBoolean() ? null : TimeValue.parseTimeValue(randomTimeValue(), "test")
+        );
     }
 
     @Override
@@ -37,12 +30,6 @@ public class DeleteExpiredDataActionRequestTests extends AbstractBWCWireSerializ
     protected Request mutateInstanceForVersion(Request instance, Version version) {
         if (version.before(Version.V_7_8_0)) {
             return new Request();
-        }
-        if (version.before(Version.V_7_9_0)) {
-            Request request = new Request();
-            request.setRequestsPerSecond(instance.getRequestsPerSecond());
-            request.setTimeout(instance.getTimeout());
-            return request;
         }
         return instance;
     }

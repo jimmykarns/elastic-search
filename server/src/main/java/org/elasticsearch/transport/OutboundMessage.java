@@ -40,6 +40,7 @@ abstract class OutboundMessage extends NetworkMessage {
     }
 
     BytesReference serialize(BytesStreamOutput bytesStream) throws IOException {
+        storedContext.restore();
         bytesStream.setVersion(version);
         bytesStream.skip(TcpHeader.headerSize(version));
 
@@ -53,8 +54,7 @@ abstract class OutboundMessage extends NetworkMessage {
             variableHeaderLength = Math.toIntExact(bytesStream.position() - preHeaderPosition);
         }
 
-        try (CompressibleBytesOutputStream stream =
-                 new CompressibleBytesOutputStream(bytesStream, TransportStatus.isCompress(status))) {
+        try (CompressibleBytesOutputStream stream = new CompressibleBytesOutputStream(bytesStream, TransportStatus.isCompress(status))) {
             stream.setVersion(version);
             if (variableHeaderLength == -1) {
                 writeVariableHeader(stream);

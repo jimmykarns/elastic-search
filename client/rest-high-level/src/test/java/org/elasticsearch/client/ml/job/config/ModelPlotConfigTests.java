@@ -25,11 +25,7 @@ public class ModelPlotConfigTests extends AbstractXContentTestCase<ModelPlotConf
 
     @Override
     protected ModelPlotConfig createTestInstance() {
-        return createRandomized();
-    }
-
-    public static ModelPlotConfig createRandomized() {
-        return new ModelPlotConfig(randomBoolean(), randomAlphaOfLengthBetween(1, 30), randomBoolean() ? randomBoolean() : null);
+        return new ModelPlotConfig(randomBoolean(), randomAlphaOfLengthBetween(1, 30));
     }
 
     @Override

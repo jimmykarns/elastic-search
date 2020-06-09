@@ -83,6 +83,8 @@ public class TermsAggregatorFactory extends ValuesSourceAggregatorFactory {
                                     boolean showTermDocCountError,
                                     boolean collectsFromSingleBucket,
                                     Map<String, Object> metadata) throws IOException {
+                assert collectsFromSingleBucket;
+
                 ExecutionMode execution = null;
                 if (executionHint != null) {
                     execution = ExecutionMode.fromString(executionHint);
@@ -108,8 +110,13 @@ public class TermsAggregatorFactory extends ValuesSourceAggregatorFactory {
 
                 // TODO: [Zach] we might want refactor and remove ExecutionMode#create(), moving that logic outside the enum
                 return execution.create(name, factories, valuesSource, order, format, bucketCountThresholds, includeExclude,
-                    context, parent, subAggCollectMode, showTermDocCountError, collectsFromSingleBucket, metadata);
+                    context, parent, subAggCollectMode, showTermDocCountError, metadata);
 
+            }
+
+            @Override
+            public boolean needsToCollectFromSingleBucket() {
+                return true;
             }
         };
     }
@@ -162,6 +169,11 @@ public class TermsAggregatorFactory extends ValuesSourceAggregatorFactory {
                 }
                 return new NumericTermsAggregator(name, factories, resultStrategy, numericValuesSource, format, order,
                     bucketCountThresholds, context, parent, subAggCollectMode, longFilter, collectsFromSingleBucket, metadata);
+            }
+
+            @Override
+            public boolean needsToCollectFromSingleBucket() {
+                return false;
             }
         };
     }
@@ -236,6 +248,10 @@ public class TermsAggregatorFactory extends ValuesSourceAggregatorFactory {
         }
 
         TermsAggregatorSupplier termsAggregatorSupplier = (TermsAggregatorSupplier) aggregatorSupplier;
+        if (collectsFromSingleBucket == false && termsAggregatorSupplier.needsToCollectFromSingleBucket()) {
+            return asMultiBucketAggregator(this, searchContext, parent);
+        }
+
         BucketCountThresholds bucketCountThresholds = new BucketCountThresholds(this.bucketCountThresholds);
         if (InternalOrder.isKeyOrder(order) == false
             && bucketCountThresholds.getShardSize() == TermsAggregationBuilder.DEFAULT_BUCKET_COUNT_THRESHOLDS.getShardSize()) {
@@ -306,25 +322,10 @@ public class TermsAggregatorFactory extends ValuesSourceAggregatorFactory {
                               Aggregator parent,
                               SubAggCollectionMode subAggCollectMode,
                               boolean showTermDocCountError,
-                              boolean collectsFromSingleBucket,
                               Map<String, Object> metadata) throws IOException {
                 final IncludeExclude.StringFilter filter = includeExclude == null ? null : includeExclude.convertToStringFilter(format);
-                return new MapStringTermsAggregator(
-                    name,
-                    factories,
-                    a -> a.new StandardTermsResults(),
-                    valuesSource,
-                    order,
-                    format,
-                    bucketCountThresholds,
-                    filter,
-                    context,
-                    parent,
-                    subAggCollectMode,
-                    showTermDocCountError,
-                    collectsFromSingleBucket,
-                    metadata
-                );
+                return new StringTermsAggregator(name, factories, valuesSource, order, format, bucketCountThresholds, filter,
+                        context, parent, subAggCollectMode, showTermDocCountError, metadata);
             }
         },
         GLOBAL_ORDINALS(new ParseField("global_ordinals")) {
@@ -340,7 +341,6 @@ public class TermsAggregatorFactory extends ValuesSourceAggregatorFactory {
                               SearchContext context, Aggregator parent,
                               SubAggCollectionMode subAggCollectMode,
                               boolean showTermDocCountError,
-                              boolean collectsFromSingleBucket,
                               Map<String, Object> metadata) throws IOException {
 
                 final long maxOrd = getMaxOrd(valuesSource, context.searcher());
@@ -372,13 +372,8 @@ public class TermsAggregatorFactory extends ValuesSourceAggregatorFactory {
                 }
                 final IncludeExclude.OrdinalsFilter filter = includeExclude == null ? null : includeExclude.convertToOrdinalsFilter(format);
                 boolean remapGlobalOrds;
-                if (collectsFromSingleBucket && REMAP_GLOBAL_ORDS != null) {
-                    /*
-                     * We use REMAP_GLOBAL_ORDS to allow tests to force
-                     * specific optimizations but this particular one
-                     * is only possible if we're collecting from a single
-                     * bucket.
-                     */
+                if (REMAP_GLOBAL_ORDS != null) {
+                    // We use REMAP_GLOBAL_ORDS to allow tests to force specific optimizations
                     remapGlobalOrds = REMAP_GLOBAL_ORDS.booleanValue();
                 } else {
                     remapGlobalOrds = true;
@@ -410,7 +405,6 @@ public class TermsAggregatorFactory extends ValuesSourceAggregatorFactory {
                     remapGlobalOrds,
                     subAggCollectMode,
                     showTermDocCountError,
-                    collectsFromSingleBucket,
                     metadata
                 );
             }
@@ -444,7 +438,6 @@ public class TermsAggregatorFactory extends ValuesSourceAggregatorFactory {
                                    Aggregator parent,
                                    SubAggCollectionMode subAggCollectMode,
                                    boolean showTermDocCountError,
-                                   boolean collectsFromSingleBucket,
                                    Map<String, Object> metadata) throws IOException;
 
         @Override

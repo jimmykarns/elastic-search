@@ -72,35 +72,32 @@ class ScriptedMetricAggregatorFactory extends AggregatorFactory {
                                         Aggregator parent,
                                         boolean collectsFromSingleBucket,
                                         Map<String, Object> metadata) throws IOException {
-        Map<String, Object> aggParams = this.aggParams == null ? Map.of() : this.aggParams;
-        Map<String, Object> initialState = new HashMap<String, Object>();
-
-        ScriptedMetricAggContexts.InitScript initScript = this.initScript.newInstance(
-            mergeParams(aggParams, initScriptParams),
-            initialState
-        );
-        if (initScript != null) {
-            initScript.execute();
-            CollectionUtils.ensureNoSelfReferences(initialState, "Scripted metric aggs init script");
+        if (collectsFromSingleBucket == false) {
+            return asMultiBucketAggregator(this, searchContext, parent);
+        }
+        Map<String, Object> aggParams = this.aggParams;
+        if (aggParams != null) {
+            aggParams = deepCopyParams(aggParams, searchContext);
+        } else {
+            aggParams = new HashMap<>();
         }
 
-        Map<String, Object> mapParams = mergeParams(aggParams, mapScriptParams); 
-        Map<String, Object> combineParams = mergeParams(aggParams, combineScriptParams); 
-        Script reduceScript = deepCopyScript(this.reduceScript, searchContext, aggParams);
+        Map<String, Object> aggState = new HashMap<String, Object>();
 
-        return new ScriptedMetricAggregator(
-            name,
-            lookup,
-            initialState,
-            mapScript,
-            mapParams,
-            combineScript,
-            combineParams,
-            reduceScript,
-            searchContext,
-            parent,
-            metadata
-        );
+        final ScriptedMetricAggContexts.InitScript initScript = this.initScript.newInstance(
+            mergeParams(aggParams, initScriptParams), aggState);
+        final ScriptedMetricAggContexts.MapScript.LeafFactory mapScript = this.mapScript.newFactory(
+            mergeParams(aggParams, mapScriptParams), aggState, lookup);
+        final ScriptedMetricAggContexts.CombineScript combineScript = this.combineScript.newInstance(
+            mergeParams(aggParams, combineScriptParams), aggState);
+
+        final Script reduceScript = deepCopyScript(this.reduceScript, searchContext, aggParams);
+        if (initScript != null) {
+            initScript.execute();
+            CollectionUtils.ensureNoSelfReferences(aggState, "Scripted metric aggs init script");
+        }
+        return new ScriptedMetricAggregator(name, mapScript,
+                combineScript, reduceScript, aggState, searchContext, parent, metadata);
     }
 
     private static Script deepCopyScript(Script script, SearchContext context, Map<String, Object> aggParams) {
@@ -113,7 +110,7 @@ class ScriptedMetricAggregatorFactory extends AggregatorFactory {
     }
 
     @SuppressWarnings({ "unchecked" })
-    static <T> T deepCopyParams(T original, SearchContext context) {
+    private static <T> T deepCopyParams(T original, SearchContext context) {
         T clone;
         if (original instanceof Map) {
             Map<?, ?> originalMap = (Map<?, ?>) original;
@@ -155,4 +152,3 @@ class ScriptedMetricAggregatorFactory extends AggregatorFactory {
         return combined;
     }
 }
-

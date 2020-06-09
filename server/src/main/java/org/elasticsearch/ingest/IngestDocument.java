@@ -700,9 +700,7 @@ public final class IngestDocument {
         ID(IdFieldMapper.NAME),
         ROUTING(RoutingFieldMapper.NAME),
         VERSION(VersionFieldMapper.NAME),
-        VERSION_TYPE("_version_type"),
-        IF_SEQ_NO("_if_seq_no"),
-        IF_PRIMARY_TERM("_if_primary_term");
+        VERSION_TYPE("_version_type");
 
         private final String fieldName;
 

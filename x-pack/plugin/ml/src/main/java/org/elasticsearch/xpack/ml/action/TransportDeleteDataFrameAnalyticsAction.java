@@ -7,7 +7,6 @@ package org.elasticsearch.xpack.ml.action;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.message.ParameterizedMessage;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.DocWriteResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
@@ -27,7 +26,6 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.StreamInput;
-import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.reindex.AbstractBulkByScrollRequest;
@@ -105,59 +103,33 @@ public class TransportDeleteDataFrameAnalyticsAction
     @Override
     protected void masterOperation(Task task, DeleteDataFrameAnalyticsAction.Request request, ClusterState state,
                                    ActionListener<AcknowledgedResponse> listener) {
+        String id = request.getId();
         TaskId taskId = new TaskId(clusterService.localNode().getId(), task.getId());
         ParentTaskAssigningClient parentTaskClient = new ParentTaskAssigningClient(client, taskId);
 
         if (request.isForce()) {
-            forceDelete(parentTaskClient, request, listener);
+            forceDelete(parentTaskClient, id, listener);
         } else {
-            normalDelete(parentTaskClient, state, request, listener);
+            normalDelete(parentTaskClient, state, id, listener);
         }
     }
 
-    private void forceDelete(ParentTaskAssigningClient parentTaskClient, DeleteDataFrameAnalyticsAction.Request request,
+    private void forceDelete(ParentTaskAssigningClient parentTaskClient, String id,
                              ActionListener<AcknowledgedResponse> listener) {
-        logger.debug("[{}] Force deleting data frame analytics job", request.getId());
+        logger.debug("[{}] Force deleting data frame analytics job", id);
 
         ActionListener<StopDataFrameAnalyticsAction.Response> stopListener = ActionListener.wrap(
-            stopResponse -> normalDelete(parentTaskClient, clusterService.state(), request, listener),
+            stopResponse -> normalDelete(parentTaskClient, clusterService.state(), id, listener),
             listener::onFailure
         );
 
-        stopJob(parentTaskClient, request, stopListener);
+        StopDataFrameAnalyticsAction.Request request = new StopDataFrameAnalyticsAction.Request(id);
+        request.setForce(true);
+        executeAsyncWithOrigin(parentTaskClient, ML_ORIGIN, StopDataFrameAnalyticsAction.INSTANCE, request, stopListener);
     }
 
-    private void stopJob(ParentTaskAssigningClient parentTaskClient, DeleteDataFrameAnalyticsAction.Request request,
-                         ActionListener<StopDataFrameAnalyticsAction.Response> listener) {
-        // We first try to stop the job normally. Normal stop returns after the job was stopped.
-        // If that fails then we proceed to force stopping which returns as soon as the persistent task is removed.
-        // If we just did force stopping, then there is a chance we proceed to delete the config while it's
-        // still used from the running task which results in logging errors.
-
-        StopDataFrameAnalyticsAction.Request stopRequest = new StopDataFrameAnalyticsAction.Request(request.getId());
-        stopRequest.setTimeout(request.timeout());
-
-        ActionListener<StopDataFrameAnalyticsAction.Response> normalStopListener = ActionListener.wrap(
-            listener::onResponse,
-            normalStopFailure -> {
-                stopRequest.setForce(true);
-                executeAsyncWithOrigin(parentTaskClient, ML_ORIGIN, StopDataFrameAnalyticsAction.INSTANCE, stopRequest, ActionListener.wrap(
-                    listener::onResponse,
-                    forceStopFailure -> {
-                        logger.error(new ParameterizedMessage("[{}] Failed to stop normally", request.getId()), normalStopFailure);
-                        logger.error(new ParameterizedMessage("[{}] Failed to stop forcefully", request.getId()), forceStopFailure);
-                        listener.onFailure(forceStopFailure);
-                    }
-                ));
-            }
-        );
-
-        executeAsyncWithOrigin(parentTaskClient, ML_ORIGIN, StopDataFrameAnalyticsAction.INSTANCE, stopRequest, normalStopListener);
-    }
-
-    private void normalDelete(ParentTaskAssigningClient parentTaskClient, ClusterState state,
-                              DeleteDataFrameAnalyticsAction.Request request, ActionListener<AcknowledgedResponse> listener) {
-        String id = request.getId();
+    private void normalDelete(ParentTaskAssigningClient parentTaskClient, ClusterState state, String id,
+                              ActionListener<AcknowledgedResponse> listener) {
         PersistentTasksCustomMetadata tasks = state.getMetadata().custom(PersistentTasksCustomMetadata.TYPE);
         DataFrameAnalyticsState taskState = MlTasks.getDataFrameAnalyticsState(id, tasks);
         if (taskState != DataFrameAnalyticsState.STOPPED) {
@@ -200,14 +172,14 @@ public class TransportDeleteDataFrameAnalyticsAction
                         logger.warn("[{}] DBQ failure: {}", id, failure);
                     }
                 }
-                deleteStats(parentTaskClient, id, request.timeout(), deleteStatsHandler);
+                deleteStats(parentTaskClient, id, deleteStatsHandler);
             },
             listener::onFailure
         );
 
         // Step 2. Delete state
         ActionListener<DataFrameAnalyticsConfig> configListener = ActionListener.wrap(
-            config -> deleteState(parentTaskClient, config, request.timeout(), deleteStateHandler),
+            config -> deleteState(parentTaskClient, config, deleteStateHandler),
             listener::onFailure
         );
 
@@ -236,7 +208,6 @@ public class TransportDeleteDataFrameAnalyticsAction
 
     private void deleteState(ParentTaskAssigningClient parentTaskClient,
                              DataFrameAnalyticsConfig config,
-                             TimeValue timeout,
                              ActionListener<BulkByScrollResponse> listener) {
         List<String> ids = new ArrayList<>();
         ids.add(StoredProgress.documentId(config.getId()));
@@ -247,25 +218,22 @@ public class TransportDeleteDataFrameAnalyticsAction
             parentTaskClient,
             AnomalyDetectorsIndex.jobStateIndexPattern(),
             QueryBuilders.idsQuery().addIds(ids.toArray(String[]::new)),
-            timeout,
             listener
         );
     }
 
     private void deleteStats(ParentTaskAssigningClient parentTaskClient,
                              String jobId,
-                             TimeValue timeout,
                              ActionListener<BulkByScrollResponse> listener) {
         executeDeleteByQuery(
             parentTaskClient,
             MlStatsIndex.indexPattern(),
             QueryBuilders.termQuery(Fields.JOB_ID.getPreferredName(), jobId),
-            timeout,
             listener
         );
     }
 
-    private void executeDeleteByQuery(ParentTaskAssigningClient parentTaskClient, String index, QueryBuilder query, TimeValue timeout,
+    private void executeDeleteByQuery(ParentTaskAssigningClient parentTaskClient, String index, QueryBuilder query,
                                       ActionListener<BulkByScrollResponse> listener) {
         DeleteByQueryRequest request = new DeleteByQueryRequest(index);
         request.setQuery(query);
@@ -273,7 +241,6 @@ public class TransportDeleteDataFrameAnalyticsAction
         request.setSlices(AbstractBulkByScrollRequest.AUTO_SLICES);
         request.setAbortOnVersionConflict(false);
         request.setRefresh(true);
-        request.setTimeout(timeout);
         executeAsyncWithOrigin(parentTaskClient, ML_ORIGIN, DeleteByQueryAction.INSTANCE, request, listener);
     }
 

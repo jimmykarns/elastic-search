@@ -93,8 +93,7 @@ public class GetResult implements Writeable, Iterable<DocumentField>, ToXContent
                 Map<String, DocumentField> fields = readFields(in);
                 documentFields = new HashMap<>();
                 metaFields = new HashMap<>();
-                fields.forEach((fieldName, docField) ->
-                    (MapperService.isMetadataFieldStatic(fieldName) ? metaFields : documentFields).put(fieldName, docField));
+                splitFieldsByMetadata(fields, documentFields, metaFields);
             }
         } else {
             metaFields = Collections.emptyMap();
@@ -387,10 +386,10 @@ public class GetResult implements Writeable, Iterable<DocumentField>, ToXContent
     }
 
     private Map<String, DocumentField> readFields(StreamInput in) throws IOException {
-        Map<String, DocumentField> fields;
+        Map<String, DocumentField> fields = null;
         int size = in.readVInt();
         if (size == 0) {
-            fields = emptyMap();
+            fields = new HashMap<>();
         } else {
             fields = new HashMap<>(size);
             for (int i = 0; i < size; i++) {
@@ -399,6 +398,20 @@ public class GetResult implements Writeable, Iterable<DocumentField>, ToXContent
             }
         }
         return fields;
+    }
+
+    static void splitFieldsByMetadata(Map<String, DocumentField> fields, Map<String, DocumentField> outOther,
+                                       Map<String, DocumentField> outMetadata) {
+        if (fields == null) {
+            return;
+        }
+        for (Map.Entry<String, DocumentField> fieldEntry: fields.entrySet()) {
+            if (fieldEntry.getValue().isMetadataField()) {
+                outMetadata.put(fieldEntry.getKey(), fieldEntry.getValue());
+            } else {
+                outOther.put(fieldEntry.getKey(), fieldEntry.getValue());
+            }
+        }
     }
 
     @Override

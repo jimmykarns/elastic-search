@@ -18,6 +18,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentParser.Token;
 import org.elasticsearch.common.xcontent.support.XContentMapValues;
 import org.elasticsearch.index.fielddata.IndexFieldData;
+import org.elasticsearch.index.mapper.ArrayValueMapperParser;
 import org.elasticsearch.index.mapper.FieldMapper;
 import org.elasticsearch.index.mapper.MappedFieldType;
 import org.elasticsearch.index.mapper.Mapper;
@@ -39,7 +40,7 @@ import static org.elasticsearch.common.xcontent.XContentParserUtils.ensureExpect
 /**
  * A {@link FieldMapper} for indexing a dense vector of floats.
  */
-public class DenseVectorFieldMapper extends FieldMapper {
+public class DenseVectorFieldMapper extends FieldMapper implements ArrayValueMapperParser {
 
     public static final String CONTENT_TYPE = "dense_vector";
     public static short MAX_DIMS_COUNT = 2048; //maximum allowed number of dimensions
@@ -170,11 +171,6 @@ public class DenseVectorFieldMapper extends FieldMapper {
     @Override
     public DenseVectorFieldType fieldType() {
         return (DenseVectorFieldType) super.fieldType();
-    }
-
-    @Override
-    public boolean parsesArrayValue() {
-        return true;
     }
 
     @Override

@@ -31,7 +31,7 @@ public class GetAsyncSearchAction extends ActionType<AsyncSearchResponse> {
 
     public static class Request extends ActionRequest {
         private final String id;
-        private TimeValue waitForCompletionTimeout = TimeValue.MINUS_ONE;
+        private TimeValue waitForCompletion = TimeValue.MINUS_ONE;
         private TimeValue keepAlive = TimeValue.MINUS_ONE;
 
         /**
@@ -46,7 +46,7 @@ public class GetAsyncSearchAction extends ActionType<AsyncSearchResponse> {
         public Request(StreamInput in) throws IOException {
             super(in);
             this.id = in.readString();
-            this.waitForCompletionTimeout = TimeValue.timeValueMillis(in.readLong());
+            this.waitForCompletion = TimeValue.timeValueMillis(in.readLong());
             this.keepAlive = in.readTimeValue();
         }
 
@@ -54,7 +54,7 @@ public class GetAsyncSearchAction extends ActionType<AsyncSearchResponse> {
         public void writeTo(StreamOutput out) throws IOException {
             super.writeTo(out);
             out.writeString(id);
-            out.writeLong(waitForCompletionTimeout.millis());
+            out.writeLong(waitForCompletion.millis());
             out.writeTimeValue(keepAlive);
         }
 
@@ -73,13 +73,13 @@ public class GetAsyncSearchAction extends ActionType<AsyncSearchResponse> {
         /**
          * Sets the minimum time that the request should wait before returning a partial result (defaults to no wait).
          */
-        public Request setWaitForCompletionTimeout(TimeValue timeValue) {
-            this.waitForCompletionTimeout = timeValue;
+        public Request setWaitForCompletion(TimeValue timeValue) {
+            this.waitForCompletion = timeValue;
             return this;
         }
 
-        public TimeValue getWaitForCompletionTimeout() {
-            return waitForCompletionTimeout;
+        public TimeValue getWaitForCompletion() {
+            return waitForCompletion;
         }
 
         /**
@@ -100,20 +100,13 @@ public class GetAsyncSearchAction extends ActionType<AsyncSearchResponse> {
             if (o == null || getClass() != o.getClass()) return false;
             Request request = (Request) o;
             return Objects.equals(id, request.id) &&
-                waitForCompletionTimeout.equals(request.waitForCompletionTimeout) &&
+                waitForCompletion.equals(request.waitForCompletion) &&
                 keepAlive.equals(request.keepAlive);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(id, waitForCompletionTimeout, keepAlive);
-        }
-
-        @Override
-        public String getDescription() {
-            return "id[" + id +
-                "], waitForCompletionTimeout[" + waitForCompletionTimeout +
-                "], keepAlive[" + keepAlive + "]";
+            return Objects.hash(id, waitForCompletion, keepAlive);
         }
     }
 }

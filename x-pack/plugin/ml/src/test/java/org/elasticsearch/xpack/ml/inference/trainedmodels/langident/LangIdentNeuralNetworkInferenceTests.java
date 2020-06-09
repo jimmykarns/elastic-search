@@ -14,8 +14,6 @@ import org.elasticsearch.xpack.core.ml.inference.TrainedModelConfig;
 import org.elasticsearch.xpack.core.ml.inference.TrainedModelDefinition;
 import org.elasticsearch.xpack.core.ml.inference.results.ClassificationInferenceResults;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.ClassificationConfig;
-import org.elasticsearch.xpack.core.ml.inference.trainedmodel.inference.InferenceDefinition;
-import org.elasticsearch.xpack.core.ml.inference.trainedmodel.langident.LangIdentNeuralNetwork;
 import org.elasticsearch.xpack.core.ml.inference.trainedmodel.langident.LanguageExamples;
 import org.elasticsearch.xpack.ml.inference.persistence.TrainedModelProvider;
 
@@ -38,10 +36,6 @@ public class LangIdentNeuralNetworkInferenceTests extends ESTestCase {
 
         config.ensureParsedDefinition(xContentRegistry());
         TrainedModelDefinition trainedModelDefinition = config.getModelDefinition();
-        InferenceDefinition inferenceDefinition = new InferenceDefinition(
-            (LangIdentNeuralNetwork)trainedModelDefinition.getTrainedModel(),
-            trainedModelDefinition.getPreProcessors()
-        );
         List<LanguageExamples.LanguageExampleEntry> examples = new LanguageExamples().getLanguageExamples();
         ClassificationConfig classificationConfig = new ClassificationConfig(1);
 
@@ -53,7 +47,7 @@ public class LangIdentNeuralNetworkInferenceTests extends ESTestCase {
             Map<String, Object> inferenceFields = new HashMap<>();
             inferenceFields.put("text", text);
             ClassificationInferenceResults singleValueInferenceResults =
-                (ClassificationInferenceResults) inferenceDefinition.infer(inferenceFields, classificationConfig);
+                (ClassificationInferenceResults) trainedModelDefinition.infer(inferenceFields, classificationConfig);
 
             assertThat(singleValueInferenceResults.valueAsString(), equalTo(cld3Actual));
             double eps = entry.getLanguage().equals("hr") ? 0.001 : 0.00001;

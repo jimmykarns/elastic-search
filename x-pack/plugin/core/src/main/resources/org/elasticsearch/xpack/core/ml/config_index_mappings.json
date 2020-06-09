@@ -193,16 +193,6 @@
           "multivariate_by_fields" : {
             "type" : "boolean"
           },
-          "per_partition_categorization" : {
-            "properties" : {
-              "enabled" : {
-                "type" : "boolean"
-              },
-              "stop_on_warn" : {
-                "type" : "boolean"
-              }
-            }
-          },
           "summary_count_field_name" : {
             "type" : "keyword"
           }
@@ -335,9 +325,6 @@
           },
           "terms" : {
             "type" : "keyword"
-          },
-          "annotations_enabled" : {
-            "type" : "boolean"
           }
         }
       },

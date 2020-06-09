@@ -91,8 +91,7 @@ public class TransportSubmitAsyncSearchAction extends HandledTransportAction<Sub
                                 // the user cancelled the submit so we don't store anything
                                 // and propagate the failure
                                 Exception cause = new TaskCancelledException(submitTask.getReasonCancelled());
-                                onFatalFailure(searchTask, cause, searchResponse.isRunning(),
-                                    "submit task is cancelled", submitListener);
+                                onFatalFailure(searchTask, cause, searchResponse.isRunning(), submitListener);
                             } else {
                                 final String docId = searchTask.getExecutionId().getDocId();
                                 // creates the fallback response if the node crashes/restarts in the middle of the request
@@ -118,13 +117,12 @@ public class TransportSubmitAsyncSearchAction extends HandledTransportAction<Sub
 
                                         @Override
                                         public void onFailure(Exception exc) {
-                                            onFatalFailure(searchTask, exc, searchResponse.isRunning(),
-                                                "unable to store initial response", submitListener);
+                                            onFatalFailure(searchTask, exc, searchResponse.isRunning(), submitListener);
                                         }
                                     });
                             }
                         } catch (Exception exc) {
-                            onFatalFailure(searchTask, exc, searchResponse.isRunning(), "generic error", submitListener);
+                            onFatalFailure(searchTask, exc, searchResponse.isRunning(), submitListener);
                         }
                     } else {
                         // the task completed within the timeout so the response is sent back to the user
@@ -159,8 +157,7 @@ public class TransportSubmitAsyncSearchAction extends HandledTransportAction<Sub
         return searchRequest;
     }
 
-    private void onFatalFailure(AsyncSearchTask task, Exception error, boolean shouldCancel, String cancelReason,
-                                ActionListener<AsyncSearchResponse> listener) {
+    private void onFatalFailure(AsyncSearchTask task, Exception error, boolean shouldCancel, ActionListener<AsyncSearchResponse> listener) {
         if (shouldCancel && task.isCancelled() == false) {
             task.cancelTask(() -> {
                 try {
@@ -168,7 +165,7 @@ public class TransportSubmitAsyncSearchAction extends HandledTransportAction<Sub
                 } finally {
                     listener.onFailure(error);
                 }
-            }, "fatal failure: " + cancelReason);
+            });
         } else {
             try {
                 task.addCompletionListener(finalResponse -> taskManager.unregister(task));

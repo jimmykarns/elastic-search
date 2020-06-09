@@ -129,6 +129,7 @@ public class TreeNode implements ToXContentObject, Writeable, Accountable {
         }
     }
 
+
     public Operator getOperator() {
         return operator;
     }
@@ -171,6 +172,21 @@ public class TreeNode implements ToXContentObject, Writeable, Accountable {
 
     public long getNumberSamples() {
         return numberSamples;
+    }
+
+    public int compare(List<Double> features) {
+        if (isLeaf()) {
+            throw new IllegalArgumentException("cannot call compare against a leaf node.");
+        }
+        Double feature = features.get(splitFeature);
+        if (isMissing(feature)) {
+            return defaultLeft ? leftChild : rightChild;
+        }
+        return operator.test(feature, threshold) ? leftChild : rightChild;
+    }
+
+    private boolean isMissing(Double feature) {
+        return feature == null;
     }
 
     @Override
@@ -343,7 +359,7 @@ public class TreeNode implements ToXContentObject, Writeable, Accountable {
             return this;
         }
 
-        public Integer getLeftChild() {
+        Integer getLeftChild() {
             return leftChild;
         }
 
@@ -352,7 +368,7 @@ public class TreeNode implements ToXContentObject, Writeable, Accountable {
             return this;
         }
 
-        public Integer getRightChild() {
+        Integer getRightChild() {
             return rightChild;
         }
 

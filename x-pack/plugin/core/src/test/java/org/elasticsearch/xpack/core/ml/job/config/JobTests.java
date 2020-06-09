@@ -584,15 +584,6 @@ public class JobTests extends AbstractSerializingTestCase<Job> {
         }
     }
 
-    public void testDocumentId() {
-        String jobFoo = "foo";
-        assertEquals("anomaly_detector-" + jobFoo, Job.documentId(jobFoo));
-        assertEquals(jobFoo, Job.extractJobIdFromDocumentId(
-            Job.documentId(jobFoo)
-        ));
-        assertNull(Job.extractJobIdFromDocumentId("some_other_type-foo"));
-    }
-
     public static Job.Builder buildJobBuilder(String id, Date date) {
         Job.Builder builder = new Job.Builder(id);
         builder.setCreateTime(date);
@@ -649,7 +640,7 @@ public class JobTests extends AbstractSerializingTestCase<Job> {
         builder.setDataDescription(dataDescription);
 
         if (randomBoolean()) {
-            builder.setModelPlotConfig(ModelPlotConfigTests.createRandomized());
+            builder.setModelPlotConfig(new ModelPlotConfig(randomBoolean(), randomAlphaOfLength(10)));
         }
         if (randomBoolean()) {
             builder.setRenormalizationWindowDays(randomNonNegativeLong());

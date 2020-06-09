@@ -141,8 +141,6 @@ public class IndicesModule extends AbstractModule {
 
     private static final Map<String, MetadataFieldMapper.TypeParser> builtInMetadataMappers = initBuiltInMetadataMappers();
 
-    private static Set<String> builtInMetadataFields = Collections.unmodifiableSet(builtInMetadataMappers.keySet());
-
     private static Map<String, MetadataFieldMapper.TypeParser> initBuiltInMetadataMappers() {
         Map<String, MetadataFieldMapper.TypeParser> builtInMetadataMappers;
         // Use a LinkedHashMap for metadataMappers because iteration order matters
@@ -200,7 +198,7 @@ public class IndicesModule extends AbstractModule {
      * Returns a set containing all of the builtin metadata fields
      */
     public static Set<String> getBuiltInMetadataFields() {
-        return builtInMetadataFields;
+        return builtInMetadataMappers.keySet();
     }
 
     private static Function<String, Predicate<String>> getFieldFilter(List<MapperPlugin> mapperPlugins) {

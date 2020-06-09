@@ -201,12 +201,19 @@ public class CloseIndexIT extends ESIntegTestCase {
 
         int nbDocs = 0;
         try (BackgroundIndexer indexer = new BackgroundIndexer(indexName, "_doc", client(), MAX_DOCS)) {
-            indexer.setFailureAssertion(t -> assertException(t, indexName));
+            indexer.setAssertNoFailuresOnStop(false);
 
             waitForDocs(randomIntBetween(10, 50), indexer);
             assertBusy(() -> closeIndices(indexName));
-            indexer.stopAndAwaitStopped();
+            indexer.stop();
             nbDocs += indexer.totalIndexedDocs();
+
+            final Throwable[] failures = indexer.getFailures();
+            if (failures != null) {
+                for (Throwable failure : failures) {
+                    assertException(failure, indexName);
+                }
+            }
         }
 
         assertIndexIsClosed(indexName);
@@ -273,7 +280,6 @@ public class CloseIndexIT extends ESIntegTestCase {
         createIndex(indexName);
 
         final BackgroundIndexer indexer = new BackgroundIndexer(indexName, "_doc", client(), MAX_DOCS);
-        indexer.setFailureAssertion(e -> {});
         waitForDocs(1, indexer);
 
         final CountDownLatch latch = new CountDownLatch(1);
@@ -315,7 +321,8 @@ public class CloseIndexIT extends ESIntegTestCase {
             thread.join();
         }
 
-        indexer.stopAndAwaitStopped();
+        indexer.setAssertNoFailuresOnStop(false);
+        indexer.stop();
 
         final ClusterState clusterState = client().admin().cluster().prepareState().get().getState();
         if (clusterState.metadata().indices().get(indexName).getState() == IndexMetadata.State.CLOSE) {

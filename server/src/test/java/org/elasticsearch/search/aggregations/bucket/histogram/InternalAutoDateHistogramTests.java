@@ -53,18 +53,34 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 
 public class InternalAutoDateHistogramTests extends InternalMultiBucketAggregationTestCase<InternalAutoDateHistogram> {
-    protected InternalAutoDateHistogram createTestInstance(
-        String name,
-        Map<String, Object> metadata,
-        InternalAggregations aggregations,
-        long startingDate,
-        RoundingInfo[] roundingInfos,
-        int roundingIndex,
-        DocValueFormat format
-    ) {
+
+    private DocValueFormat format;
+    private RoundingInfo[] roundingInfos;
+    private long defaultStart;
+    private int roundingIndex;
+
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        format = randomNumericDocValueFormat();
+        defaultStart = randomLongBetween(0, utcMillis("2050-01-01"));
+        roundingIndex = between(0, AutoDateHistogramAggregationBuilder.buildRoundings(null, null).length - 1);
+    }
+
+    @Override
+    protected InternalAutoDateHistogram createTestInstance(String name,
+                                                       Map<String, Object> metadata,
+                                                       InternalAggregations aggregations) {
+
+        roundingInfos = AutoDateHistogramAggregationBuilder.buildRoundings(null, null);
         int nbBuckets = randomNumberOfBuckets();
         int targetBuckets = randomIntBetween(1, nbBuckets * 2 + 1);
         List<InternalAutoDateHistogram.Bucket> buckets = new ArrayList<>(nbBuckets);
+
+        long startingDate = defaultStart;
+        if (rarely()) {
+            startingDate += randomFrom(TimeUnit.MINUTES, TimeUnit.HOURS, TimeUnit.DAYS).toMillis(between(1, 10000));
+        }
 
         long interval = randomIntBetween(1, 3);
         long intervalMillis = roundingInfos[roundingIndex].roughEstimateDurationMillis * interval;
@@ -78,26 +94,9 @@ public class InternalAutoDateHistogramTests extends InternalMultiBucketAggregati
         return new InternalAutoDateHistogram(name, buckets, targetBuckets, bucketInfo, format, metadata, 1);
     }
 
-    @Override
-    protected InternalAutoDateHistogram createTestInstance(String name,
-                                                       Map<String, Object> metadata,
-                                                       InternalAggregations aggregations) {
-        RoundingInfo[] roundingInfos = AutoDateHistogramAggregationBuilder.buildRoundings(null, null);
-        int roundingIndex = between(0, roundingInfos.length - 1);
-        return createTestInstance(
-            name,
-            metadata,
-            aggregations,
-            randomLongBetween(0, utcMillis("2050-01-01")),
-            roundingInfos,
-            roundingIndex,
-            randomNumericDocValueFormat()
-        );
-    }
-
     /*
-     * This test was added to reproduce a bug where getAppropriateRounding was only ever using the first innerIntervals
-     * passed in, instead of using the interval associated with the loop.
+    This test was added to reproduce a bug where getAppropriateRounding was only ever using the first innerIntervals
+    passed in, instead of using the interval associated with the loop.
      */
     public void testGetAppropriateRoundingUsesCorrectIntervals() {
         RoundingInfo[] roundings = new RoundingInfo[6];
@@ -122,23 +121,8 @@ public class InternalAutoDateHistogramTests extends InternalMultiBucketAggregati
     }
 
     @Override
-    protected List<InternalAutoDateHistogram> randomResultsToReduce(String name, int size) {
-        long startingDate = randomLongBetween(0, utcMillis("2050-01-01"));
-        RoundingInfo[] roundingInfos = AutoDateHistogramAggregationBuilder.buildRoundings(null, null);
-        int roundingIndex = between(0, roundingInfos.length - 1);
-        DocValueFormat format = randomNumericDocValueFormat();
-        List<InternalAutoDateHistogram> result = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            long thisResultStart = startingDate;
-            thisResultStart += usually() ? 0 :randomFrom(TimeUnit.MINUTES, TimeUnit.HOURS, TimeUnit.DAYS).toMillis(between(1, 10000));
-            result.add(createTestInstance(name, null, InternalAggregations.EMPTY, thisResultStart, roundingInfos, roundingIndex, format));
-        }
-        return result;
-    }
-
-    @Override
     protected void assertReduced(InternalAutoDateHistogram reduced, List<InternalAutoDateHistogram> inputs) {
-        int totalBucketConut = 0;
+
         long lowest = Long.MAX_VALUE;
         long highest = 0;
 
@@ -151,13 +135,11 @@ public class InternalAutoDateHistogramTests extends InternalMultiBucketAggregati
                 if (bucketKey > highest) {
                     highest = bucketKey;
                 }
-                totalBucketConut++;
             }
         }
 
         int roundingIndex = reduced.getBucketInfo().roundingIdx;
-        RoundingInfo roundingInfo = AutoDateHistogramAggregationBuilder.buildRoundings(null, null)[roundingIndex];
-        Rounding.Prepared prepared = roundingInfo.rounding.prepare(lowest, highest);
+        RoundingInfo roundingInfo = roundingInfos[roundingIndex];
 
         long normalizedDuration = (highest - lowest) / roundingInfo.getRoughEstimateDurationMillis();
         int innerIntervalIndex = 0;
@@ -165,7 +147,7 @@ public class InternalAutoDateHistogramTests extends InternalMultiBucketAggregati
         /*
          * Guess the interval to use based on the roughly estimated
          * duration. It'll be accurate or it'll produce more buckets
-         * than we need but it is quick.
+         * than we need but it is quick. 
          */
         if (normalizedDuration != 0) {
             for (int j = roundingInfo.innerIntervals.length-1; j >= 0; j--) {
@@ -181,57 +163,52 @@ public class InternalAutoDateHistogramTests extends InternalMultiBucketAggregati
          * number of buckets.
          */
         int innerIntervalToUse;
-        if (totalBucketConut == 0) {
-            innerIntervalToUse = roundingInfo.innerIntervals[0];
-        } else {
-            do {
-                innerIntervalToUse = roundingInfo.innerIntervals[innerIntervalIndex];
-                int bucketCountAtInterval = getBucketCount(lowest, highest, prepared, innerIntervalToUse);
-                if (bucketCountAtInterval == reduced.getBuckets().size()) {
-                    break;
-                }
-                if (bucketCountAtInterval < reduced.getBuckets().size()) {
-                    innerIntervalToUse = roundingInfo.innerIntervals[Math.max(0, innerIntervalIndex - 1)];
-                    break;
-                }
-            } while (++innerIntervalIndex < roundingInfo.innerIntervals.length);
-        }
+        do {
+            innerIntervalToUse = roundingInfo.innerIntervals[innerIntervalIndex];
+            int bucketCount = getBucketCount(lowest, highest, roundingInfo.rounding, innerIntervalToUse);
+            if (bucketCount == reduced.getBuckets().size()) {
+                break;
+            }
+            if (bucketCount < reduced.getBuckets().size()) {
+                innerIntervalToUse = roundingInfo.innerIntervals[Math.max(0, innerIntervalIndex - 1)];
+                break;
+            }
+        } while (++innerIntervalIndex < roundingInfo.innerIntervals.length);
 
         assertThat(reduced.getInterval().toString(), equalTo(innerIntervalToUse + roundingInfo.unitAbbreviation));
         Map<Instant, Long> expectedCounts = new TreeMap<>();
-        if (totalBucketConut > 0) {
-            long keyForBucket = prepared.round(lowest);
-            while (keyForBucket <= prepared.round(highest)) {
-                long nextKey = keyForBucket;
-                for (int i = 0; i < innerIntervalToUse; i++) {
-                    nextKey = prepared.nextRoundingValue(nextKey);
-                }
-                Instant key = Instant.ofEpochMilli(keyForBucket);
-                expectedCounts.put(key, 0L);
+        long keyForBucket = roundingInfo.rounding.round(lowest);
+        while (keyForBucket <= roundingInfo.rounding.round(highest)) {
+            long nextKey = keyForBucket;
+            for (int i = 0; i < innerIntervalToUse; i++) {
+                nextKey = roundingInfo.rounding.nextRoundingValue(nextKey);
+            }
+            Instant key = Instant.ofEpochMilli(keyForBucket);
+            expectedCounts.put(key, 0L);
 
-                // Iterate through the input buckets, and for each bucket, determine if it's inside
-                // the range of the bucket in the outer loop. if it is, add the doc count to the total
-                // for that bucket.
+            // Iterate through the input buckets, and for each bucket, determine if it's inside
+            // the range of the bucket in the outer loop. if it is, add the doc count to the total
+            // for that bucket.
 
-                for (InternalAutoDateHistogram histogram : inputs) {
-                    for (Histogram.Bucket bucket : histogram.getBuckets()) {
-                        long roundedBucketKey = prepared.round(((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli());
-                        long docCount = bucket.getDocCount();
-                        if (roundedBucketKey >= keyForBucket && roundedBucketKey < nextKey) {
-                            expectedCounts.compute(key,
-                                (k, oldValue) -> (oldValue == null ? 0 : oldValue) + docCount);
-                        }
+            for (InternalAutoDateHistogram histogram : inputs) {
+                for (Histogram.Bucket bucket : histogram.getBuckets()) {
+                    long roundedBucketKey = roundingInfo.rounding.round(((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli());
+                    long docCount = bucket.getDocCount();
+                    if (roundedBucketKey >= keyForBucket && roundedBucketKey < nextKey) {
+                        expectedCounts.compute(key,
+                            (k, oldValue) -> (oldValue == null ? 0 : oldValue) + docCount);
                     }
                 }
-                keyForBucket = nextKey;
             }
-
-            // If there is only a single bucket, and we haven't added it above, add a bucket with no documents.
-            // this step is necessary because of the roundedBucketKey < keyForBucket + intervalInMillis above.
-            if (prepared.round(lowest) == prepared.round(highest) && expectedCounts.isEmpty()) {
-                expectedCounts.put(Instant.ofEpochMilli(prepared.round(lowest)), 0L);
-            }
+            keyForBucket = nextKey;
         }
+
+        // If there is only a single bucket, and we haven't added it above, add a bucket with no documents.
+        // this step is necessary because of the roundedBucketKey < keyForBucket + intervalInMillis above.
+        if (roundingInfo.rounding.round(lowest) == roundingInfo.rounding.round(highest) && expectedCounts.isEmpty()) {
+            expectedCounts.put(Instant.ofEpochMilli(roundingInfo.rounding.round(lowest)), 0L);
+        }
+
 
         // pick out the actual reduced values to the make the assertion more readable
         Map<Instant, Long> actualCounts = new TreeMap<>();
@@ -250,12 +227,12 @@ public class InternalAutoDateHistogramTests extends InternalMultiBucketAggregati
         assertThat(reduced.getInterval(), equalTo(expectedInterval));
     }
 
-    private int getBucketCount(long min, long max, Rounding.Prepared prepared, int interval) {
+    private int getBucketCount(long min, long max, Rounding rounding, int interval) {
         int bucketCount = 0;
-        long key = prepared.round(min);
+        long key = rounding.round(min);
         while (key < max) {
             for (int i = 0; i < interval; i++) {
-                key = prepared.nextRoundingValue(key);
+                key = rounding.nextRoundingValue(key);
             }
             bucketCount++;
         }
@@ -280,7 +257,7 @@ public class InternalAutoDateHistogramTests extends InternalMultiBucketAggregati
             break;
         case 1:
             buckets = new ArrayList<>(buckets);
-            buckets.add(new InternalAutoDateHistogram.Bucket(randomNonNegativeLong(), randomIntBetween(1, 100), instance.getFormatter(),
+            buckets.add(new InternalAutoDateHistogram.Bucket(randomNonNegativeLong(), randomIntBetween(1, 100), format,
                     InternalAggregations.EMPTY));
             break;
         case 2:
@@ -298,7 +275,7 @@ public class InternalAutoDateHistogramTests extends InternalMultiBucketAggregati
         default:
             throw new AssertionError("Illegal randomisation branch");
         }
-        return new InternalAutoDateHistogram(name, buckets, targetBuckets, bucketInfo, instance.getFormatter(), metadata, 1);
+        return new InternalAutoDateHistogram(name, buckets, targetBuckets, bucketInfo, format, metadata, 1);
     }
 
     public void testReduceSecond() {

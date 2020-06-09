@@ -41,24 +41,21 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
     private static final String USER_DICT_RULES_OPTION = "user_dictionary_rules";
     private static final String NBEST_COST = "nbest_cost";
     private static final String NBEST_EXAMPLES = "nbest_examples";
-    private static final String DISCARD_COMPOUND_TOKEN = "discard_compound_token";
 
     private final UserDictionary userDictionary;
     private final Mode mode;
     private final String nBestExamples;
     private final int nBestCost;
 
-    private boolean discardPunctuation;
-    private boolean discardCompoundToken;
+    private boolean discartPunctuation;
 
     public KuromojiTokenizerFactory(IndexSettings indexSettings, Environment env, String name, Settings settings) {
         super(indexSettings, settings, name);
         mode = getMode(settings);
         userDictionary = getUserDictionary(env, settings);
-        discardPunctuation = settings.getAsBoolean("discard_punctuation", true);
+        discartPunctuation = settings.getAsBoolean("discard_punctuation", true);
         nBestCost = settings.getAsInt(NBEST_COST, -1);
         nBestExamples = settings.get(NBEST_EXAMPLES);
-        discardCompoundToken = settings.getAsBoolean(DISCARD_COMPOUND_TOKEN, false);
     }
 
     public static UserDictionary getUserDictionary(Environment env, Settings settings) {
@@ -111,7 +108,7 @@ public class KuromojiTokenizerFactory extends AbstractTokenizerFactory {
 
     @Override
     public Tokenizer create() {
-        JapaneseTokenizer t = new JapaneseTokenizer(userDictionary, discardPunctuation, discardCompoundToken, mode);
+        JapaneseTokenizer t = new JapaneseTokenizer(userDictionary, discartPunctuation, mode);
         int nBestCost = this.nBestCost;
         if (nBestExamples != null) {
             nBestCost = Math.max(nBestCost, t.calcNBestCost(nBestExamples));

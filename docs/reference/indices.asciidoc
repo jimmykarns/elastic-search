@@ -57,11 +57,8 @@ index settings, data streams, aliases, mappings, and index templates.
 [[index-templates]]
 === Index templates:
 * <<indices-templates>>
-* <<indices-put-template>>
-* <<indices-get-template>>
 * <<indices-delete-template>>
-* <<indices-component-template>>
-* <<getting-component-templates>>
+* <<indices-get-template>>
 * <<indices-template-exists>>
 
 [float]

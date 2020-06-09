@@ -10,7 +10,8 @@ import org.elasticsearch.test.AbstractWireSerializingTestCase;
 import org.elasticsearch.xpack.core.ml.job.config.AnalysisLimits;
 import org.elasticsearch.xpack.core.ml.job.config.JobUpdate;
 
-public class UpdateJobActionRequestTests extends AbstractWireSerializingTestCase<UpdateJobAction.Request> {
+public class UpdateJobActionRequestTests
+        extends AbstractWireSerializingTestCase<UpdateJobAction.Request> {
 
     @Override
     protected UpdateJobAction.Request createTestInstance() {

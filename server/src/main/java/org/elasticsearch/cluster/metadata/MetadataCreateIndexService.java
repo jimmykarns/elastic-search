@@ -71,7 +71,6 @@ import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.indices.IndexCreationException;
 import org.elasticsearch.indices.IndicesService;
 import org.elasticsearch.indices.InvalidIndexNameException;
-import org.elasticsearch.indices.ShardLimitValidator;
 import org.elasticsearch.indices.SystemIndexDescriptor;
 import org.elasticsearch.threadpool.ThreadPool;
 
@@ -88,6 +87,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
@@ -126,7 +126,6 @@ public class MetadataCreateIndexService {
     private final ActiveShardsObserver activeShardsObserver;
     private final NamedXContentRegistry xContentRegistry;
     private final Collection<SystemIndexDescriptor> systemIndexDescriptors;
-    private final ShardLimitValidator shardLimitValidator;
     private final boolean forbidPrivateIndexSettings;
 
     public MetadataCreateIndexService(
@@ -135,7 +134,6 @@ public class MetadataCreateIndexService {
         final IndicesService indicesService,
         final AllocationService allocationService,
         final AliasValidator aliasValidator,
-        final ShardLimitValidator shardLimitValidator,
         final Environment env,
         final IndexScopedSettings indexScopedSettings,
         final ThreadPool threadPool,
@@ -153,7 +151,6 @@ public class MetadataCreateIndexService {
         this.xContentRegistry = xContentRegistry;
         this.systemIndexDescriptors = systemIndexDescriptors;
         this.forbidPrivateIndexSettings = forbidPrivateIndexSettings;
-        this.shardLimitValidator = shardLimitValidator;
     }
 
     /**
@@ -333,11 +330,9 @@ public class MetadataCreateIndexService {
             final Boolean isHiddenFromRequest = IndexMetadata.INDEX_HIDDEN_SETTING.exists(request.settings()) ?
                 IndexMetadata.INDEX_HIDDEN_SETTING.get(request.settings()) : null;
 
-            // The backing index may have a different name or prefix than the data stream name.
-            final String name = request.dataStreamName() != null ? request.dataStreamName() : request.index();
             // Check to see if a v2 template matched
             final String v2Template = MetadataIndexTemplateService.findV2Template(currentState.metadata(),
-                name, isHiddenFromRequest == null ? false : isHiddenFromRequest);
+                request.index(), isHiddenFromRequest == null ? false : isHiddenFromRequest);
 
             if (v2Template != null) {
                 // If a v2 template was found, it takes precedence over all v1 templates, so create
@@ -464,7 +459,7 @@ public class MetadataCreateIndexService {
 
         final Settings aggregatedIndexSettings =
             aggregateIndexSettings(currentState, request, MetadataIndexTemplateService.resolveSettings(templates), mappings,
-                null, settings, indexScopedSettings, shardLimitValidator);
+                null, settings, indexScopedSettings);
         int routingNumShards = getIndexNumberOfRoutingShards(aggregatedIndexSettings, null);
         IndexMetadata tmpImd = buildAndValidateTemporaryIndexMetadata(currentState, aggregatedIndexSettings, request, routingNumShards);
 
@@ -490,7 +485,7 @@ public class MetadataCreateIndexService {
         final Settings aggregatedIndexSettings =
             aggregateIndexSettings(currentState, request,
                 MetadataIndexTemplateService.resolveSettings(currentState.metadata(), templateName),
-                mappings, null, settings, indexScopedSettings, shardLimitValidator);
+                mappings, null, settings, indexScopedSettings);
         int routingNumShards = getIndexNumberOfRoutingShards(aggregatedIndexSettings, null);
         IndexMetadata tmpImd = buildAndValidateTemporaryIndexMetadata(currentState, aggregatedIndexSettings, request, routingNumShards);
 
@@ -522,8 +517,8 @@ public class MetadataCreateIndexService {
 
         final Map<String, Object> mappings = Collections.unmodifiableMap(MapperService.parseMapping(xContentRegistry, request.mappings()));
 
-        final Settings aggregatedIndexSettings = aggregateIndexSettings(currentState, request, Settings.EMPTY, mappings, sourceMetadata,
-            settings, indexScopedSettings, shardLimitValidator);
+        final Settings aggregatedIndexSettings =
+            aggregateIndexSettings(currentState, request, Settings.EMPTY, mappings, sourceMetadata, settings, indexScopedSettings);
         final int routingNumShards = getIndexNumberOfRoutingShards(aggregatedIndexSettings, sourceMetadata);
         IndexMetadata tmpImd = buildAndValidateTemporaryIndexMetadata(currentState, aggregatedIndexSettings, request, routingNumShards);
 
@@ -569,10 +564,12 @@ public class MetadataCreateIndexService {
                 Map<String, Object> innerTemplateNonProperties = new HashMap<>(innerTemplateMapping);
                 Map<String, Object> maybeProperties = (Map<String, Object>) innerTemplateNonProperties.remove("properties");
 
-                nonProperties = mergeFailingOnReplacement(nonProperties, innerTemplateNonProperties);
+                nonProperties = removeDuplicatedDynamicTemplates(nonProperties, innerTemplateNonProperties);
+                XContentHelper.mergeDefaults(innerTemplateNonProperties, nonProperties);
+                nonProperties = innerTemplateNonProperties;
 
                 if (maybeProperties != null) {
-                    properties = mergeFailingOnReplacement(properties, maybeProperties);
+                    properties = mergeIgnoringDots(properties, maybeProperties);
                 }
             }
         }
@@ -582,16 +579,83 @@ public class MetadataCreateIndexService {
             Map<String, Object> innerRequestNonProperties = new HashMap<>(innerRequestMappings);
             Map<String, Object> maybeRequestProperties = (Map<String, Object>) innerRequestNonProperties.remove("properties");
 
-            nonProperties = mergeFailingOnReplacement(nonProperties, innerRequestNonProperties);
+            nonProperties = removeDuplicatedDynamicTemplates(nonProperties, innerRequestMappings);
+            XContentHelper.mergeDefaults(innerRequestNonProperties, nonProperties);
+            nonProperties = innerRequestNonProperties;
 
             if (maybeRequestProperties != null) {
-                properties = mergeFailingOnReplacement(properties, maybeRequestProperties);
+                properties = mergeIgnoringDots(properties, maybeRequestProperties);
             }
         }
 
         Map<String, Object> finalMappings = dedupDynamicTemplates(nonProperties);
         finalMappings.put("properties", properties);
         return Collections.singletonMap(MapperService.SINGLE_MAPPING_NAME, finalMappings);
+    }
+
+    /**
+     * Removes the already seen/processed dynamic templates from the previouslySeenMapping if they are defined (we're
+     * identifying the dynamic templates based on the name only, *not* on the full definition) in the newMapping we are about to
+     * process (and merge)
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> removeDuplicatedDynamicTemplates(Map<String, Object> previouslySeenMapping,
+                                                                        Map<String, Object> newMapping) {
+        Map<String, Object> result = new HashMap<>(previouslySeenMapping);
+        List<Map<String, Object>> newDynamicTemplates = (List<Map<String, Object>>) newMapping.get("dynamic_templates");
+        List<Map<String, Object>> previouslySeenDynamicTemplates =
+            (List<Map<String, Object>>) previouslySeenMapping.get("dynamic_templates");
+
+        List<Map<String, Object>> filteredDynamicTemplates = removeOverlapping(previouslySeenDynamicTemplates, newDynamicTemplates);
+
+        // if we removed any mappings from the previously seen ones, we'll re-add them on merge time, see
+        // {@link XContentHelper#mergeDefaults}, so update the result to contain the filtered ones
+        if (filteredDynamicTemplates != previouslySeenDynamicTemplates) {
+            result.put("dynamic_templates", filteredDynamicTemplates);
+        }
+        return result;
+    }
+
+    /**
+     * Removes all the items from the first list that are already present in the second list
+     *
+     * Similar to {@link List#removeAll(Collection)} but the list parameters are not modified.
+     *
+     * This expects both list values to be Maps of size one and the "contains" operation that will determine if a value
+     * from the second list is present in the first list (and be removed from the first list) is based on key name.
+     *
+     * eg.
+     *      removeAll([ {"key1" : {}}, {"key2" : {}} ], [ {"key1" : {}}, {"key3" : {}} ])
+     * Returns:
+     *     [ {"key2" : {}} ]
+     */
+    private static List<Map<String, Object>> removeOverlapping(List<Map<String, Object>> first, List<Map<String, Object>> second) {
+        if (first == null) {
+            return first;
+        } else {
+            validateValuesAreMapsOfSizeOne(first);
+        }
+
+        if (second == null) {
+            return first;
+        } else {
+            validateValuesAreMapsOfSizeOne(second);
+        }
+
+        Set<String> keys = second.stream()
+            .map(value -> value.keySet().iterator().next())
+            .collect(Collectors.toSet());
+
+        return first.stream().filter(value -> keys.contains(value.keySet().iterator().next()) == false).collect(toList());
+    }
+
+    private static void validateValuesAreMapsOfSizeOne(List<Map<String, Object>> second) {
+        for (Map<String, Object> map : second) {
+            // all are in the form of [ {"key1" : {}}, {"key2" : {}} ]
+            if (map.size() != 1) {
+                throw new IllegalArgumentException("unexpected argument, expected maps with one key, but got " + map);
+            }
+        }
     }
 
     /**
@@ -620,18 +684,18 @@ public class MetadataCreateIndexService {
     }
 
     /**
-     * Add the objects in the second map to the first, A duplicated field is treated as illegal and
-     * an exception is thrown.
+     * Add the objects in the second map to the first, where the keys in the {@code second} map have
+     * higher predecence and overwrite the keys in the {@code first} map. In the event of a key with
+     * a dot in it (ie, "foo.bar"), the keys are treated as only the prefix counting towards
+     * equality. If the {@code second} map has a key such as "foo", all keys starting from "foo." in
+     * the {@code first} map are discarded.
      */
-    static Map<String, Object> mergeFailingOnReplacement(Map<String, Object> first, Map<String, Object> second) {
+    static Map<String, Object> mergeIgnoringDots(Map<String, Object> first, Map<String, Object> second) {
         Objects.requireNonNull(first, "merging requires two non-null maps but the first map was null");
         Objects.requireNonNull(second, "merging requires two non-null maps but the second map was null");
         Map<String, Object> results = new HashMap<>(first);
         Set<String> prefixes = second.keySet().stream().map(MetadataCreateIndexService::prefix).collect(Collectors.toSet());
-        List<String> matchedPrefixes = results.keySet().stream().filter(k -> prefixes.contains(prefix(k))).collect(Collectors.toList());
-        if (matchedPrefixes.size() > 0) {
-            throw new IllegalArgumentException("mapping fields " + matchedPrefixes + " cannot be replaced during template composition");
-        }
+        results.keySet().removeIf(k -> prefixes.contains(prefix(k)));
         results.putAll(second);
         return results;
     }
@@ -688,7 +752,7 @@ public class MetadataCreateIndexService {
     static Settings aggregateIndexSettings(ClusterState currentState, CreateIndexClusterStateUpdateRequest request,
                                            Settings templateSettings, Map<String, Object> mappings,
                                            @Nullable IndexMetadata sourceMetadata, Settings settings,
-                                           IndexScopedSettings indexScopedSettings, ShardLimitValidator shardLimitValidator) {
+                                           IndexScopedSettings indexScopedSettings) {
         Settings.Builder indexSettingsBuilder = Settings.builder();
         if (sourceMetadata == null) {
             indexSettingsBuilder.put(templateSettings);
@@ -731,21 +795,17 @@ public class MetadataCreateIndexService {
 
         Settings indexSettings = indexSettingsBuilder.build();
         /*
-         * We can not validate settings until we have applied templates, otherwise we do not know the actual settings
+         * We can not check the shard limit until we have applied templates, otherwise we do not know the actual number of shards
          * that will be used to create this index.
          */
-        shardLimitValidator.validateShardLimit(indexSettings, currentState);
-        validateSoftDeleteSettings(indexSettings);
-        validateTranslogRetentionSettings(indexSettings);
-        return indexSettings;
-    }
-
-    private static void validateSoftDeleteSettings(Settings indexSettings) {
+        MetadataCreateIndexService.checkShardLimit(indexSettings, currentState);
         if (IndexSettings.INDEX_SOFT_DELETES_SETTING.get(indexSettings) == false
             && IndexMetadata.SETTING_INDEX_VERSION_CREATED.get(indexSettings).onOrAfter(Version.V_8_0_0)) {
             throw new IllegalArgumentException("Creating indices with soft-deletes disabled is no longer supported. " +
                 "Please do not specify a value for setting [index.soft_deletes.enabled].");
         }
+        validateTranslogRetentionSettings(indexSettings);
+        return indexSettings;
     }
 
     /**
@@ -965,6 +1025,26 @@ public class MetadataCreateIndexService {
             ValidationException validationException = new ValidationException();
             validationException.addValidationErrors(validationErrors);
             throw new IndexCreationException(indexName, validationException);
+        }
+    }
+
+    /**
+     * Checks whether an index can be created without going over the cluster shard limit.
+     *
+     * @param settings     the settings of the index to be created
+     * @param clusterState the current cluster state
+     * @throws ValidationException if creating this index would put the cluster over the cluster shard limit
+     */
+    public static void checkShardLimit(final Settings settings, final ClusterState clusterState) {
+        final int numberOfShards = INDEX_NUMBER_OF_SHARDS_SETTING.get(settings);
+        final int numberOfReplicas = IndexMetadata.INDEX_NUMBER_OF_REPLICAS_SETTING.get(settings);
+        final int shardsToCreate = numberOfShards * (1 + numberOfReplicas);
+
+        final Optional<String> shardLimit = IndicesService.checkShardLimit(shardsToCreate, clusterState);
+        if (shardLimit.isPresent()) {
+            final ValidationException e = new ValidationException();
+            e.addValidationError(shardLimit.get());
+            throw e;
         }
     }
 

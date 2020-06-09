@@ -21,7 +21,6 @@ package org.elasticsearch.client.ml;
 import org.elasticsearch.client.Validatable;
 import org.elasticsearch.client.core.PageParams;
 import org.elasticsearch.client.ml.job.config.Job;
-import org.elasticsearch.client.ml.job.results.CategoryDefinition;
 import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.xcontent.ConstructingObjectParser;
 import org.elasticsearch.common.xcontent.ToXContentObject;
@@ -35,8 +34,8 @@ import java.util.Objects;
  */
 public class GetCategoriesRequest implements Validatable, ToXContentObject {
 
-    public static final ParseField CATEGORY_ID = CategoryDefinition.CATEGORY_ID;
-    public static final ParseField PARTITION_FIELD_VALUE = CategoryDefinition.PARTITION_FIELD_VALUE;
+
+    public static final ParseField CATEGORY_ID = new ParseField("category_id");
 
     public static final ConstructingObjectParser<GetCategoriesRequest, Void> PARSER = new ConstructingObjectParser<>(
         "get_categories_request", a -> new GetCategoriesRequest((String) a[0]));
@@ -46,13 +45,11 @@ public class GetCategoriesRequest implements Validatable, ToXContentObject {
         PARSER.declareString(ConstructingObjectParser.constructorArg(), Job.ID);
         PARSER.declareLong(GetCategoriesRequest::setCategoryId, CATEGORY_ID);
         PARSER.declareObject(GetCategoriesRequest::setPageParams, PageParams.PARSER, PageParams.PAGE);
-        PARSER.declareString(GetCategoriesRequest::setPartitionFieldValue, PARTITION_FIELD_VALUE);
     }
 
     private final String jobId;
     private Long categoryId;
     private PageParams pageParams;
-    private String partitionFieldValue;
 
     /**
      * Constructs a request to retrieve category information from a given job
@@ -90,18 +87,6 @@ public class GetCategoriesRequest implements Validatable, ToXContentObject {
         this.pageParams = pageParams;
     }
 
-    public String getPartitionFieldValue() {
-        return partitionFieldValue;
-    }
-
-    /**
-     * Sets the partition field value
-     * @param partitionFieldValue the partition field value
-     */
-    public void setPartitionFieldValue(String partitionFieldValue) {
-        this.partitionFieldValue = partitionFieldValue;
-    }
-
     @Override
     public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
         builder.startObject();
@@ -111,9 +96,6 @@ public class GetCategoriesRequest implements Validatable, ToXContentObject {
         }
         if (pageParams != null) {
             builder.field(PageParams.PAGE.getPreferredName(), pageParams);
-        }
-        if (partitionFieldValue != null) {
-            builder.field(PARTITION_FIELD_VALUE.getPreferredName(), partitionFieldValue);
         }
         builder.endObject();
         return builder;
@@ -130,12 +112,11 @@ public class GetCategoriesRequest implements Validatable, ToXContentObject {
         GetCategoriesRequest request = (GetCategoriesRequest) obj;
         return Objects.equals(jobId, request.jobId)
             && Objects.equals(categoryId, request.categoryId)
-            && Objects.equals(pageParams, request.pageParams)
-            && Objects.equals(partitionFieldValue, request.partitionFieldValue);
+            && Objects.equals(pageParams, request.pageParams);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(jobId, categoryId, pageParams, partitionFieldValue);
+        return Objects.hash(jobId, categoryId, pageParams);
     }
 }

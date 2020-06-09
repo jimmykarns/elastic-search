@@ -15,13 +15,11 @@ import org.elasticsearch.client.ElasticsearchClient;
 import org.elasticsearch.common.ParseField;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.xpack.core.ml.dataframe.DataFrameAnalyticsConfig;
 import org.elasticsearch.xpack.core.ml.utils.ExceptionsHelper;
 
 import java.io.IOException;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 public class DeleteDataFrameAnalyticsAction extends ActionType<AcknowledgedResponse> {
 
@@ -35,10 +33,6 @@ public class DeleteDataFrameAnalyticsAction extends ActionType<AcknowledgedRespo
     public static class Request extends AcknowledgedRequest<Request> {
 
         public static final ParseField FORCE = new ParseField("force");
-        public static final ParseField TIMEOUT = new ParseField("timeout");
-
-        // Default timeout matches that of delete by query
-        private static final TimeValue DEFAULT_TIMEOUT = new TimeValue(1, TimeUnit.MINUTES);
 
         private String id;
         private boolean force;
@@ -53,12 +47,9 @@ public class DeleteDataFrameAnalyticsAction extends ActionType<AcknowledgedRespo
             }
         }
 
-        public Request() {
-            timeout(DEFAULT_TIMEOUT);
-        }
+        public Request() {}
 
         public Request(String id) {
-            this();
             this.id = ExceptionsHelper.requireNonNull(id, DataFrameAnalyticsConfig.ID);
         }
 
@@ -84,9 +75,7 @@ public class DeleteDataFrameAnalyticsAction extends ActionType<AcknowledgedRespo
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             DeleteDataFrameAnalyticsAction.Request request = (DeleteDataFrameAnalyticsAction.Request) o;
-            return Objects.equals(id, request.id)
-                && force == request.force
-                && Objects.equals(timeout, request.timeout);
+            return Objects.equals(id, request.id) && force == request.force;
         }
 
         @Override
@@ -100,7 +89,7 @@ public class DeleteDataFrameAnalyticsAction extends ActionType<AcknowledgedRespo
 
         @Override
         public int hashCode() {
-            return Objects.hash(id, force, timeout);
+            return Objects.hash(id, force);
         }
     }
 

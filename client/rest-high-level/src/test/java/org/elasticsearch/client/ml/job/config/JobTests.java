@@ -133,7 +133,7 @@ public class JobTests extends AbstractXContentTestCase<Job> {
         builder.setDataDescription(dataDescription);
 
         if (randomBoolean()) {
-            builder.setModelPlotConfig(ModelPlotConfigTests.createRandomized());
+            builder.setModelPlotConfig(new ModelPlotConfig(randomBoolean(), randomAlphaOfLength(10)));
         }
         if (randomBoolean()) {
             builder.setRenormalizationWindowDays(randomNonNegativeLong());

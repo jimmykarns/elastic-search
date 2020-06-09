@@ -40,7 +40,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public final class Grok {
 
@@ -77,20 +76,19 @@ public final class Grok {
     private final Regex compiledExpression;
     private final MatcherWatchdog matcherWatchdog;
 
-    public Grok(Map<String, String> patternBank, String grokPattern, Consumer<String> logCallBack) {
-        this(patternBank, grokPattern, true, MatcherWatchdog.noop(), logCallBack);
+    public Grok(Map<String, String> patternBank, String grokPattern) {
+        this(patternBank, grokPattern, true, MatcherWatchdog.noop());
     }
 
-    public Grok(Map<String, String> patternBank, String grokPattern, MatcherWatchdog matcherWatchdog, Consumer<String> logCallBack) {
-        this(patternBank, grokPattern, true, matcherWatchdog, logCallBack);
+    public Grok(Map<String, String> patternBank, String grokPattern, MatcherWatchdog matcherWatchdog) {
+        this(patternBank, grokPattern, true, matcherWatchdog);
     }
 
-    Grok(Map<String, String> patternBank, String grokPattern, boolean namedCaptures, Consumer<String> logCallBack) {
-        this(patternBank, grokPattern, namedCaptures, MatcherWatchdog.noop(), logCallBack);
+    Grok(Map<String, String> patternBank, String grokPattern, boolean namedCaptures) {
+        this(patternBank, grokPattern, namedCaptures, MatcherWatchdog.noop());
     }
 
-    private Grok(Map<String, String> patternBank, String grokPattern, boolean namedCaptures, MatcherWatchdog matcherWatchdog,
-                 Consumer<String> logCallBack) {
+    private Grok(Map<String, String> patternBank, String grokPattern, boolean namedCaptures, MatcherWatchdog matcherWatchdog) {
         this.patternBank = patternBank;
         this.namedCaptures = namedCaptures;
         this.matcherWatchdog = matcherWatchdog;
@@ -103,8 +101,7 @@ public final class Grok {
 
         String expression = toRegex(grokPattern);
         byte[] expressionBytes = expression.getBytes(StandardCharsets.UTF_8);
-        this.compiledExpression = new Regex(expressionBytes, 0, expressionBytes.length, Option.DEFAULT, UTF8Encoding.INSTANCE,
-            message -> logCallBack.accept(message));
+        this.compiledExpression = new Regex(expressionBytes, 0, expressionBytes.length, Option.DEFAULT, UTF8Encoding.INSTANCE);
     }
 
     /**

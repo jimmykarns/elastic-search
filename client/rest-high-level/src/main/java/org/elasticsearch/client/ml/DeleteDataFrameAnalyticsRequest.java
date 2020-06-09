@@ -21,7 +21,6 @@ package org.elasticsearch.client.ml;
 
 import org.elasticsearch.client.Validatable;
 import org.elasticsearch.client.ValidationException;
-import org.elasticsearch.common.unit.TimeValue;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -33,7 +32,6 @@ public class DeleteDataFrameAnalyticsRequest implements Validatable {
 
     private final String id;
     private Boolean force;
-    private TimeValue timeout;
 
     public DeleteDataFrameAnalyticsRequest(String id) {
         this.id = id;
@@ -57,19 +55,6 @@ public class DeleteDataFrameAnalyticsRequest implements Validatable {
         this.force = force;
     }
 
-    public TimeValue getTimeout() {
-        return timeout;
-    }
-
-    /**
-     * Sets the time to wait until the job is deleted.
-     *
-     * @param timeout The time to wait until the job is deleted.
-     */
-    public void setTimeout(TimeValue timeout) {
-        this.timeout = timeout;
-    }
-
     @Override
     public Optional<ValidationException> validate() {
         if (id == null) {
@@ -84,13 +69,11 @@ public class DeleteDataFrameAnalyticsRequest implements Validatable {
         if (o == null || getClass() != o.getClass()) return false;
 
         DeleteDataFrameAnalyticsRequest other = (DeleteDataFrameAnalyticsRequest) o;
-        return Objects.equals(id, other.id)
-            && Objects.equals(force, other.force)
-            && Objects.equals(timeout, other.timeout);
+        return Objects.equals(id, other.id) && Objects.equals(force, other.force);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, force, timeout);
+        return Objects.hash(id, force);
     }
 }

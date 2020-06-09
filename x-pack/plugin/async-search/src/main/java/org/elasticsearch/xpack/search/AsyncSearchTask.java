@@ -134,9 +134,9 @@ final class AsyncSearchTask extends SearchTask implements AsyncTask {
     /**
      * Cancels the running task and its children.
      */
-    public void cancelTask(Runnable runnable, String reason) {
+    public void cancelTask(Runnable runnable) {
         if (isCancelled() == false && isCancelling.compareAndSet(false, true)) {
-            CancelTasksRequest req = new CancelTasksRequest().setTaskId(searchId.getTaskId()).setReason(reason);
+            CancelTasksRequest req = new CancelTasksRequest().setTaskId(searchId.getTaskId());
             client.admin().cluster().cancelTasks(req, new ActionListener<>() {
                 @Override
                 public void onResponse(CancelTasksResponse cancelTasksResponse) {
@@ -316,6 +316,8 @@ final class AsyncSearchTask extends SearchTask implements AsyncTask {
         return searchResponse.get().toAsyncSearchResponseWithHeaders(this, expirationTimeMillis);
     }
 
+
+
     // checks if the search task should be cancelled
     private synchronized void checkCancellation() {
         long now = System.currentTimeMillis();
@@ -324,7 +326,7 @@ final class AsyncSearchTask extends SearchTask implements AsyncTask {
             // we cancel the search task if the initial submit task was cancelled,
             // this is needed because the task cancellation mechanism doesn't
             // handle the cancellation of grand-children.
-            cancelTask(() -> {}, checkSubmitCancellation.getAsBoolean() ? "submit was cancelled" : "async search has expired");
+            cancelTask(() -> {});
         }
     }
 

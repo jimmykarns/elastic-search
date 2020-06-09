@@ -13,7 +13,7 @@ import org.elasticsearch.xpack.core.ml.job.config.AnalysisConfigTests;
 import org.elasticsearch.xpack.core.ml.job.config.AnalysisLimitsTests;
 import org.elasticsearch.xpack.core.ml.job.config.DataDescription;
 import org.elasticsearch.xpack.core.ml.job.config.Job;
-import org.elasticsearch.xpack.core.ml.job.config.ModelPlotConfigTests;
+import org.elasticsearch.xpack.core.ml.job.config.ModelPlotConfig;
 
 import java.util.Collections;
 import java.util.Date;
@@ -48,7 +48,8 @@ public class JobBuilderTests extends AbstractSerializingTestCase<Job.Builder> {
             builder.setDataDescription(dataDescription);
         }
         if (randomBoolean()) {
-            builder.setModelPlotConfig(ModelPlotConfigTests.createRandomized());
+            builder.setModelPlotConfig(new ModelPlotConfig(randomBoolean(),
+                    randomAlphaOfLength(10)));
         }
         if (randomBoolean()) {
             builder.setRenormalizationWindowDays(randomNonNegativeLong());

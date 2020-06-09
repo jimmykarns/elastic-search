@@ -14,7 +14,6 @@ import org.elasticsearch.xpack.ql.expression.function.grouping.GroupingFunction;
 import org.elasticsearch.xpack.ql.expression.gen.script.ScriptTemplate;
 import org.elasticsearch.xpack.ql.expression.gen.script.Scripts;
 import org.elasticsearch.xpack.ql.tree.Source;
-import org.elasticsearch.xpack.ql.type.DataTypes;
 import org.elasticsearch.xpack.ql.util.DateUtils;
 
 import java.time.OffsetTime;
@@ -109,28 +108,17 @@ public abstract class ScalarFunction extends Function {
     }
     
     protected ScriptTemplate scriptWithAggregate(AggregateFunction aggregate) {
-        String template = basicTemplate(aggregate);
+        String template = "{}";
         return new ScriptTemplate(processScript(template),
                 paramsBuilder().agg(aggregate).build(),
                 dataType());
     }
 
-    // This method isn't actually used at the moment, since there is no grouping function (ie HISTOGRAM)
-    // that currently results in a script being generated
     protected ScriptTemplate scriptWithGrouping(GroupingFunction grouping) {
-        String template = basicTemplate(grouping);
+        String template = "{}";
         return new ScriptTemplate(processScript(template),
                 paramsBuilder().grouping(grouping).build(),
                 dataType());
-    }
-
-    // FIXME: this needs to be refactored to account for different datatypes in different projects (ie DATE from SQL)
-    private String basicTemplate(Function function) {
-        if (function.dataType().name().equals("DATE") || function.dataType() == DataTypes.DATETIME) {
-            return "{sql}.asDateTime({})";
-        } else {
-            return "{}";
-        }
     }
 
     protected ScriptTemplate scriptWithField(FieldAttribute field) {

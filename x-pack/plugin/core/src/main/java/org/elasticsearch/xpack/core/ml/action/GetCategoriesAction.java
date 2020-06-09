@@ -40,10 +40,9 @@ public class GetCategoriesAction extends ActionType<GetCategoriesAction.Response
 
     public static class Request extends ActionRequest implements ToXContentObject {
 
-        public static final ParseField CATEGORY_ID = CategoryDefinition.CATEGORY_ID;
+        public static final ParseField CATEGORY_ID = new ParseField("category_id");
         public static final ParseField FROM = new ParseField("from");
         public static final ParseField SIZE = new ParseField("size");
-        public static final ParseField PARTITION_FIELD_VALUE = CategoryDefinition.PARTITION_FIELD_VALUE;
 
         private static final ObjectParser<Request, Void> PARSER = new ObjectParser<>(NAME, Request::new);
 
@@ -51,7 +50,6 @@ public class GetCategoriesAction extends ActionType<GetCategoriesAction.Response
             PARSER.declareString((request, jobId) -> request.jobId = jobId, Job.ID);
             PARSER.declareLong(Request::setCategoryId, CATEGORY_ID);
             PARSER.declareObject(Request::setPageParams, PageParams.PARSER, PageParams.PAGE);
-            PARSER.declareString(Request::setPartitionFieldValue, PARTITION_FIELD_VALUE);
         }
 
         public static Request parseRequest(String jobId, XContentParser parser) {
@@ -65,7 +63,6 @@ public class GetCategoriesAction extends ActionType<GetCategoriesAction.Response
         private String jobId;
         private Long categoryId;
         private PageParams pageParams;
-        private String partitionFieldValue;
 
         public Request(String jobId) {
             this.jobId = ExceptionsHelper.requireNonNull(jobId, Job.ID.getPreferredName());
@@ -79,7 +76,6 @@ public class GetCategoriesAction extends ActionType<GetCategoriesAction.Response
             jobId = in.readString();
             categoryId = in.readOptionalLong();
             pageParams = in.readOptionalWriteable(PageParams::new);
-            partitionFieldValue = in.readOptionalString();
         }
 
         public String getJobId() { return jobId; }
@@ -104,14 +100,6 @@ public class GetCategoriesAction extends ActionType<GetCategoriesAction.Response
             this.pageParams = pageParams;
         }
 
-        public String getPartitionFieldValue() {
-            return partitionFieldValue;
-        }
-
-        public void setPartitionFieldValue(String partitionFieldValue) {
-            this.partitionFieldValue = partitionFieldValue;
-        }
-
         @Override
         public ActionRequestValidationException validate() {
             ActionRequestValidationException validationException = null;
@@ -129,7 +117,6 @@ public class GetCategoriesAction extends ActionType<GetCategoriesAction.Response
             out.writeString(jobId);
             out.writeOptionalLong(categoryId);
             out.writeOptionalWriteable(pageParams);
-            out.writeOptionalString(partitionFieldValue);
         }
 
         @Override
@@ -141,9 +128,6 @@ public class GetCategoriesAction extends ActionType<GetCategoriesAction.Response
             }
             if (pageParams != null) {
                 builder.field(PageParams.PAGE.getPreferredName(), pageParams);
-            }
-            if (partitionFieldValue != null) {
-                builder.field(PARTITION_FIELD_VALUE.getPreferredName(), partitionFieldValue);
             }
             builder.endObject();
             return builder;
@@ -158,13 +142,12 @@ public class GetCategoriesAction extends ActionType<GetCategoriesAction.Response
             Request request = (Request) o;
             return Objects.equals(jobId, request.jobId)
                     && Objects.equals(categoryId, request.categoryId)
-                    && Objects.equals(pageParams, request.pageParams)
-                    && Objects.equals(partitionFieldValue, request.partitionFieldValue);
+                    && Objects.equals(pageParams, request.pageParams);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(jobId, categoryId, pageParams, partitionFieldValue);
+            return Objects.hash(jobId, categoryId, pageParams);
         }
     }
 

@@ -50,10 +50,9 @@ public class StringProcessor implements Processor {
         }),
         LCASE((String s) -> s.toLowerCase(Locale.ROOT)),
         UCASE((String s) -> s.toUpperCase(Locale.ROOT)),
-        LENGTH((String s) -> s.stripTrailing().length()),
-        RTRIM(String::stripTrailing),
-        LTRIM(String::stripLeading),
-        TRIM(String::trim),
+        LENGTH((String s) -> StringFunctionUtils.trimTrailingWhitespaces(s).length()),
+        RTRIM((String s) -> StringFunctionUtils.trimTrailingWhitespaces(s)),
+        LTRIM((String s) -> StringFunctionUtils.trimLeadingWhitespaces(s)),
         SPACE((Number n) -> {
             int i = n.intValue();
             if (i < 0) {

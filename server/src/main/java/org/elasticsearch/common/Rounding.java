@@ -240,9 +240,9 @@ public abstract class Rounding implements Writeable {
 
     /**
      * Rounds the given value.
-     * @deprecated Prefer {@link #prepare} and then {@link Prepared#round(long)}
+     * <p>
+     * Prefer {@link #prepare(long, long)} if rounding many values.
      */
-    @Deprecated
     public final long round(long utcMillis) {
         return prepare(utcMillis, utcMillis).round(utcMillis);
     }
@@ -252,9 +252,9 @@ public abstract class Rounding implements Writeable {
      * {@link #round(long)}, returns the next rounding value. For
      * example, with interval based rounding, if the interval is
      * 3, {@code nextRoundValue(6) = 9}.
-     * @deprecated Prefer {@link #prepare} and then {@link Prepared#nextRoundingValue(long)}
+     * <p>
+     * Prefer {@link #prepare(long, long)} if rounding many values.
      */
-    @Deprecated
     public final long nextRoundingValue(long utcMillis) {
         return prepare(utcMillis, utcMillis).nextRoundingValue(utcMillis);
     }

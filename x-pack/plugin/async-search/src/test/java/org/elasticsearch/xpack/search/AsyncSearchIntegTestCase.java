@@ -237,7 +237,7 @@ public abstract class AsyncSearchIntegTestCase extends ESIntegTestCase {
                 queryLatch.countDownAndReset();
                 AsyncSearchResponse newResponse = client().execute(GetAsyncSearchAction.INSTANCE,
                     new GetAsyncSearchAction.Request(response.getId())
-                        .setWaitForCompletionTimeout(TimeValue.timeValueMillis(10))).get();
+                        .setWaitForCompletion(TimeValue.timeValueMillis(10))).get();
 
                 if (newResponse.isRunning()) {
                     assertThat(newResponse.status(), equalTo(RestStatus.OK));

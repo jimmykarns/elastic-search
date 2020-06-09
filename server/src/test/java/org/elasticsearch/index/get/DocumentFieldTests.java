@@ -26,8 +26,11 @@ import org.elasticsearch.common.document.DocumentField;
 import org.elasticsearch.common.xcontent.ToXContent;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.index.mapper.IdFieldMapper;
 import org.elasticsearch.index.mapper.IgnoredFieldMapper;
-import org.elasticsearch.indices.IndicesModule;
+import org.elasticsearch.index.mapper.IndexFieldMapper;
+import org.elasticsearch.index.mapper.MapperService;
+import org.elasticsearch.index.mapper.TypeFieldMapper;
 import org.elasticsearch.test.ESTestCase;
 import org.elasticsearch.test.RandomObjects;
 
@@ -35,7 +38,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static org.elasticsearch.common.xcontent.XContentHelper.toXContent;
@@ -99,14 +101,10 @@ public class DocumentFieldTests extends ESTestCase {
     }
 
     public static Tuple<DocumentField, DocumentField> randomDocumentField(XContentType xContentType) {
-        return randomDocumentField(xContentType, randomBoolean(), fieldName -> false);  // don't exclude any meta-fields
-    }
-
-    public static Tuple<DocumentField, DocumentField> randomDocumentField(XContentType xContentType, boolean isMetafield,
-            Predicate<String> excludeMetaFieldFilter) {
-        if (isMetafield) {
-            String metaField = randomValueOtherThanMany(excludeMetaFieldFilter,
-                () -> randomFrom(IndicesModule.getBuiltInMetadataFields()));
+        if (randomBoolean()) {
+            String metaField = randomValueOtherThanMany(field -> field.equals(TypeFieldMapper.NAME)
+                    || field.equals(IndexFieldMapper.NAME) || field.equals(IdFieldMapper.NAME),
+                () -> randomFrom(MapperService.getAllMetaFields()));
             DocumentField documentField;
             if (metaField.equals(IgnoredFieldMapper.NAME)) {
                 int numValues = randomIntBetween(1, 3);

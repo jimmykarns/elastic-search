@@ -512,7 +512,7 @@ public class JobConfigProvider {
                               boolean allowMissingConfigs,
                               ActionListener<SortedSet<String>> listener) {
         String [] tokens = ExpandedIdsMatcher.tokenizeExpression(expression);
-        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder().query(buildJobWildcardQuery(tokens, excludeDeleting));
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder().query(buildQuery(tokens, excludeDeleting));
         sourceBuilder.sort(Job.ID.getPreferredName());
         sourceBuilder.fetchSource(false);
         sourceBuilder.docValueField(Job.ID.getPreferredName(), null);
@@ -573,7 +573,7 @@ public class JobConfigProvider {
      */
     public void expandJobs(String expression, boolean allowNoJobs, boolean excludeDeleting, ActionListener<List<Job.Builder>> listener) {
         String [] tokens = ExpandedIdsMatcher.tokenizeExpression(expression);
-        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder().query(buildJobWildcardQuery(tokens, excludeDeleting));
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder().query(buildQuery(tokens, excludeDeleting));
         sourceBuilder.sort(Job.ID.getPreferredName());
 
         SearchRequest searchRequest = client.prepareSearch(AnomalyDetectorsIndex.configIndexName())
@@ -767,7 +767,7 @@ public class JobConfigProvider {
         }
     }
 
-    public static QueryBuilder buildJobWildcardQuery(String [] tokens, boolean excludeDeleting) {
+    private QueryBuilder buildQuery(String [] tokens, boolean excludeDeleting) {
         QueryBuilder jobQuery = new TermQueryBuilder(Job.JOB_TYPE.getPreferredName(), Job.ANOMALY_DETECTOR_JOB_TYPE);
         if (Strings.isAllOrWildcard(tokens) && excludeDeleting == false) {
             // match all

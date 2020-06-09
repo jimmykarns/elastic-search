@@ -155,7 +155,6 @@ import org.elasticsearch.index.seqno.RetentionLeaseSyncer;
 import org.elasticsearch.index.shard.PrimaryReplicaSyncer;
 import org.elasticsearch.indices.IndicesModule;
 import org.elasticsearch.indices.IndicesService;
-import org.elasticsearch.indices.ShardLimitValidator;
 import org.elasticsearch.indices.analysis.AnalysisModule;
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService;
 import org.elasticsearch.indices.cluster.IndicesClusterStateService;
@@ -614,6 +613,14 @@ public class SnapshotResiliencyTests extends ESTestCase {
         Collection<SnapshotId> snapshotIds = getRepositoryData(repository).getSnapshotIds();
         // No snapshots should be left in the repository
         assertThat(snapshotIds, empty());
+
+        for (SnapshotId snapshotId : snapshotIds) {
+            final SnapshotInfo snapshotInfo = repository.getSnapshotInfo(snapshotId);
+            assertEquals(SnapshotState.SUCCESS, snapshotInfo.state());
+            assertThat(snapshotInfo.indices(), containsInAnyOrder(index));
+            assertEquals(shards, snapshotInfo.successfulShards());
+            assertEquals(0, snapshotInfo.failedShards());
+        }
     }
 
     public void testConcurrentSnapshotRestoreAndDeleteOther() {
@@ -768,7 +775,7 @@ public class SnapshotResiliencyTests extends ESTestCase {
             assertThat(snapshotInfo.successfulShards(), either(is(indices + 1)).or(is(indices)));
             if (snapshotInfo.successfulShards() == indices + 1) {
                 final IndexMetadata indexMetadata =
-                    repository.getSnapshotIndexMetaData(repositoryData, snapshotInfo.snapshotId(), repositoryData.resolveIndexId(index));
+                    repository.getSnapshotIndexMetadata(snapshotInfo.snapshotId(), repositoryData.resolveIndexId(index));
                 // Make sure we snapshotted the metadata of this index and not the recreated version
                 assertEquals(indexMetadata.getIndex(), firstIndex.get());
             }
@@ -1478,10 +1485,9 @@ public class SnapshotResiliencyTests extends ESTestCase {
                             actionFilters)),
                     RetentionLeaseSyncer.EMPTY,
                     client);
-                final ShardLimitValidator shardLimitValidator = new ShardLimitValidator(settings, clusterService);
                 final MetadataCreateIndexService metadataCreateIndexService = new MetadataCreateIndexService(settings, clusterService,
                     indicesService,
-                    allocationService, new AliasValidator(), shardLimitValidator, environment, indexScopedSettings,
+                    allocationService, new AliasValidator(), environment, indexScopedSettings,
                     threadPool, namedXContentRegistry, Collections.emptyList(), false);
                 actions.put(CreateIndexAction.INSTANCE,
                     new TransportCreateIndexAction(
@@ -1511,8 +1517,7 @@ public class SnapshotResiliencyTests extends ESTestCase {
                         settings, namedXContentRegistry,
                         mapperRegistry,
                         indexScopedSettings),
-                    clusterSettings,
-                        shardLimitValidator
+                    clusterSettings
                 );
                 actions.put(PutMappingAction.INSTANCE,
                     new TransportPutMappingAction(transportService, clusterService, threadPool, metadataMappingService,

@@ -137,7 +137,7 @@ public class DiskDisruptionIT extends AbstractDisruptionTestCase {
             false, random())) {
             indexer.setRequestTimeout(TimeValue.ZERO);
             indexer.setIgnoreIndexingFailures(true);
-            indexer.setFailureAssertion(e -> {});
+            indexer.setAssertNoFailuresOnStop(false);
             indexer.start(-1);
 
             waitForDocs(randomIntBetween(1, 100), indexer);

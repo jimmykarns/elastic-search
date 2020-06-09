@@ -36,9 +36,6 @@ public class GetCategoriesRequestTests extends AbstractXContentTestCase<GetCateg
             int size = randomInt(10000);
             request.setPageParams(new PageParams(from, size));
         }
-        if (randomBoolean()) {
-            request.setPartitionFieldValue(randomAlphaOfLength(10));
-        }
         return request;
     }
 

@@ -11,8 +11,6 @@ import org.elasticsearch.xpack.core.ml.job.config.JobUpdate;
 import org.elasticsearch.xpack.core.ml.job.config.MlFilter;
 import org.elasticsearch.xpack.core.ml.job.config.MlFilterTests;
 import org.elasticsearch.xpack.core.ml.job.config.ModelPlotConfig;
-import org.elasticsearch.xpack.core.ml.job.config.ModelPlotConfigTests;
-import org.elasticsearch.xpack.core.ml.job.config.PerPartitionCategorizationConfig;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,13 +19,9 @@ public class UpdateProcessActionRequestTests extends AbstractWireSerializingTest
 
     @Override
     protected UpdateProcessAction.Request createTestInstance() {
-        ModelPlotConfig modelPlotConfig = null;
+        ModelPlotConfig config = null;
         if (randomBoolean()) {
-            modelPlotConfig = ModelPlotConfigTests.createRandomized();
-        }
-        PerPartitionCategorizationConfig perPartitionCategorizationConfig = null;
-        if (randomBoolean()) {
-            perPartitionCategorizationConfig = new PerPartitionCategorizationConfig(true, randomBoolean());
+            config = new ModelPlotConfig(randomBoolean(), randomAlphaOfLength(10));
         }
         List<JobUpdate.DetectorUpdate> updates = null;
         if (randomBoolean()) {
@@ -41,8 +35,7 @@ public class UpdateProcessActionRequestTests extends AbstractWireSerializingTest
         if (randomBoolean()) {
             filter = MlFilterTests.createTestFilter();
         }
-        return new UpdateProcessAction.Request(randomAlphaOfLength(10), modelPlotConfig, perPartitionCategorizationConfig, updates,
-            filter, randomBoolean());
+        return new UpdateProcessAction.Request(randomAlphaOfLength(10), config, updates, filter, randomBoolean());
     }
 
     @Override

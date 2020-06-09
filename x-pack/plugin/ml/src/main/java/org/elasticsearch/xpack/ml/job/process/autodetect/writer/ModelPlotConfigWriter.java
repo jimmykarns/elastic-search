@@ -42,11 +42,6 @@ public class ModelPlotConfigWriter {
                 .append(terms == null ? "" : terms)
                 .append(NEW_LINE);
 
-        contents.append(ModelPlotConfig.ANNOTATIONS_ENABLED_FIELD.getPreferredName())
-                .append(EQUALS)
-                .append(modelPlotConfig.annotationsEnabled())
-                .append(NEW_LINE);
-
         writer.write(contents.toString());
     }
 }

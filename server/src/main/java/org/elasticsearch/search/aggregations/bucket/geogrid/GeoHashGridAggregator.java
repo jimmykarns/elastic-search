@@ -35,8 +35,8 @@ public class GeoHashGridAggregator extends GeoGridAggregator<InternalGeoHashGrid
 
     public GeoHashGridAggregator(String name, AggregatorFactories factories, ValuesSource.Numeric valuesSource,
                                  int requiredSize, int shardSize, SearchContext aggregationContext,
-                                 Aggregator parent, boolean collectsFromSingleBucket, Map<String, Object> metadata) throws IOException {
-        super(name, factories, valuesSource, requiredSize, shardSize, aggregationContext, parent, collectsFromSingleBucket, metadata);
+                                 Aggregator parent, Map<String, Object> metadata) throws IOException {
+        super(name, factories, valuesSource, requiredSize, shardSize, aggregationContext, parent, metadata);
     }
 
     @Override

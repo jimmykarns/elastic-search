@@ -115,8 +115,6 @@ public class SnapshotsService extends AbstractLifecycleComponent implements Clus
 
     public static final Version SHARD_GEN_IN_REPO_DATA_VERSION = Version.V_7_6_0;
 
-    public static final Version INDEX_GEN_IN_REPO_DATA_VERSION = Version.V_8_0_0;
-
     public static final Version OLD_SNAPSHOT_FORMAT = Version.V_7_5_0;
 
     public static final Version MULTI_DELETE_VERSION = Version.V_7_8_0;
@@ -230,7 +228,8 @@ public class SnapshotsService extends AbstractLifecycleComponent implements Clus
                 logger.trace("[{}][{}] creating snapshot for indices [{}]", repositoryName, snapshotName, indices);
 
                 final List<IndexId> indexIds = repositoryData.resolveNewIndices(indices);
-                final Version version = minCompatibleVersion(currentState.nodes().getMinNodeVersion(), repositoryData, null);
+                final Version version = minCompatibleVersion(
+                        clusterService.state().nodes().getMinNodeVersion(), repositoryData, null);
                 ImmutableOpenMap<ShardId, ShardSnapshotStatus> shards =
                         shards(currentState, indexIds, useShardGenerations(version), repositoryData);
                 if (request.partial() == false) {
@@ -1120,16 +1119,7 @@ public class SnapshotsService extends AbstractLifecycleComponent implements Clus
     }
 
     /**
-     * Checks whether the metadata version supports writing {@link ShardGenerations} to the repository.
-     *
-     * @param repositoryMetaVersion version to check
-     * @return true if version supports {@link ShardGenerations}
-     */
-    public static boolean useIndexGenerations(Version repositoryMetaVersion) {
-        return repositoryMetaVersion.onOrAfter(INDEX_GEN_IN_REPO_DATA_VERSION);
-    }
-
-    /** Deletes snapshot from repository
+     * Deletes snapshot from repository
      *
      * @param repoName          repository name
      * @param snapshotIds       snapshot ids

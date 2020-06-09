@@ -34,6 +34,7 @@ You can modify the default policies through
 {kibana-ref}/example-using-index-lifecycle-policy.html[{kib} Management]
 or the {ilm-init} APIs.
 
+
 [discrete]
 [[ilm-gs-create-policy]]
 === Create a lifecycle policy

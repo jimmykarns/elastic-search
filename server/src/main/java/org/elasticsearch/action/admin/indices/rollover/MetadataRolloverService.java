@@ -145,10 +145,10 @@ public class MetadataRolloverService {
 
         final DataStream ds = dataStream.getDataStream();
         final IndexMetadata originalWriteIndex = dataStream.getWriteIndex();
-        final String newWriteIndexName = DataStream.getDefaultBackingIndexName(ds.getName(), ds.getGeneration() + 1);
+        final String newWriteIndexName = DataStream.getBackingIndexName(ds.getName(), ds.getGeneration() + 1);
 
         CreateIndexClusterStateUpdateRequest createIndexClusterStateRequest =
-            prepareDataStreamCreateIndexRequest(dataStreamName, newWriteIndexName, createIndexRequest);
+            prepareDataStreamCreateIndexRequest(newWriteIndexName, createIndexRequest);
         ClusterState newState = createIndexService.applyCreateIndexRequest(currentState, createIndexClusterStateRequest, silent,
             (builder, indexMetadata) -> builder.put(ds.rollover(indexMetadata.getIndex())));
 
@@ -178,12 +178,10 @@ public class MetadataRolloverService {
         }
     }
 
-    static CreateIndexClusterStateUpdateRequest prepareDataStreamCreateIndexRequest(final String dataStreamName,
-                                                                                    final String targetIndexName,
+    static CreateIndexClusterStateUpdateRequest prepareDataStreamCreateIndexRequest(final String targetIndexName,
                                                                                     CreateIndexRequest createIndexRequest) {
         Settings settings = Settings.builder().put("index.hidden", true).build();
-        return prepareCreateIndexRequest(targetIndexName, targetIndexName, "rollover_data_stream", createIndexRequest, settings)
-            .dataStreamName(dataStreamName);
+        return prepareCreateIndexRequest(targetIndexName, targetIndexName, "rollover_data_stream", createIndexRequest, settings);
     }
 
     static CreateIndexClusterStateUpdateRequest prepareCreateIndexRequest(

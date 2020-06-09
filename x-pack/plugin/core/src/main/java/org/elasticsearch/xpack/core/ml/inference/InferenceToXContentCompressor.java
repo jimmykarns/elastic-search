@@ -10,8 +10,6 @@ import org.elasticsearch.common.CheckedFunction;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.io.stream.BytesStreamOutput;
-import org.elasticsearch.common.unit.ByteSizeUnit;
-import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.ToXContentObject;
@@ -39,7 +37,7 @@ public final class InferenceToXContentCompressor {
     // Either 10% of the configured JVM heap, or 1 GB, which ever is smaller
     private static final long MAX_INFLATED_BYTES = Math.min(
         (long)((0.10) * JvmInfo.jvmInfo().getMem().getHeapMax().getBytes()),
-        new ByteSizeValue(1, ByteSizeUnit.GB).getBytes());
+        1_000_000_000); // 1 gb maximum
 
     private InferenceToXContentCompressor() {}
 
@@ -48,9 +46,9 @@ public final class InferenceToXContentCompressor {
         return deflate(reference);
     }
 
-    public static <T> T inflate(String compressedString,
-                                CheckedFunction<XContentParser, T, IOException> parserFunction,
-                                NamedXContentRegistry xContentRegistry) throws IOException {
+    static <T> T inflate(String compressedString,
+                         CheckedFunction<XContentParser, T, IOException> parserFunction,
+                         NamedXContentRegistry xContentRegistry) throws IOException {
         try(XContentParser parser = JsonXContent.jsonXContent.createParser(xContentRegistry,
             LoggingDeprecationHandler.INSTANCE,
             inflate(compressedString, MAX_INFLATED_BYTES))) {

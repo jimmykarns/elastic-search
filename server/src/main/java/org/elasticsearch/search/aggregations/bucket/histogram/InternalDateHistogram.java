@@ -329,7 +329,10 @@ public final class InternalDateHistogram extends InternalMultiBucketAggregation<
                     // the key changes, reduce what we already buffered and reset the buffer for current buckets
                     final Bucket reduced = reduceBucket(currentBuckets, reduceContext);
                     if (reduced.getDocCount() >= minDocCount || reduceContext.isFinalReduce() == false) {
+                        reduceContext.consumeBucketsAndMaybeBreak(1);
                         reducedBuckets.add(reduced);
+                    } else {
+                        reduceContext.consumeBucketsAndMaybeBreak(-countInnerBucket(reduced));
                     }
                     currentBuckets.clear();
                     key = top.current.key;
@@ -350,7 +353,10 @@ public final class InternalDateHistogram extends InternalMultiBucketAggregation<
             if (currentBuckets.isEmpty() == false) {
                 final Bucket reduced = reduceBucket(currentBuckets, reduceContext);
                 if (reduced.getDocCount() >= minDocCount || reduceContext.isFinalReduce() == false) {
+                    reduceContext.consumeBucketsAndMaybeBreak(1);
                     reducedBuckets.add(reduced);
+                } else {
+                    reduceContext.consumeBucketsAndMaybeBreak(-countInnerBucket(reduced));
                 }
             }
         }
@@ -390,6 +396,7 @@ public final class InternalDateHistogram extends InternalMultiBucketAggregation<
                     long key = bounds.getMin() + offset;
                     long max = bounds.getMax() + offset;
                     while (key <= max) {
+                        reduceContext.consumeBucketsAndMaybeBreak(1);
                         iter.add(new InternalDateHistogram.Bucket(key, 0, keyed, format, reducedEmptySubAggs));
                         key = nextKey(key).longValue();
                     }
@@ -399,6 +406,7 @@ public final class InternalDateHistogram extends InternalMultiBucketAggregation<
                     long key = bounds.getMin() + offset;
                     if (key < firstBucket.key) {
                         while (key < firstBucket.key) {
+                            reduceContext.consumeBucketsAndMaybeBreak(1);
                             iter.add(new InternalDateHistogram.Bucket(key, 0, keyed, format, reducedEmptySubAggs));
                             key = nextKey(key).longValue();
                         }
@@ -414,6 +422,7 @@ public final class InternalDateHistogram extends InternalMultiBucketAggregation<
             if (lastBucket != null) {
                 long key = nextKey(lastBucket.key).longValue();
                 while (key < nextBucket.key) {
+                    reduceContext.consumeBucketsAndMaybeBreak(1);
                     iter.add(new InternalDateHistogram.Bucket(key, 0, keyed, format, reducedEmptySubAggs));
                     key = nextKey(key).longValue();
                 }
@@ -427,6 +436,7 @@ public final class InternalDateHistogram extends InternalMultiBucketAggregation<
             long key = nextKey(lastBucket.key).longValue();
             long max = bounds.getMax() + offset;
             while (key <= max) {
+                reduceContext.consumeBucketsAndMaybeBreak(1);
                 iter.add(new InternalDateHistogram.Bucket(key, 0, keyed, format, reducedEmptySubAggs));
                 key = nextKey(key).longValue();
             }
@@ -452,7 +462,6 @@ public final class InternalDateHistogram extends InternalMultiBucketAggregation<
                 CollectionUtil.introSort(reducedBuckets, order.comparator());
             }
         }
-        reduceContext.consumeBucketsAndMaybeBreak(reducedBuckets.size());
         return new InternalDateHistogram(getName(), reducedBuckets, order, minDocCount, offset, emptyBucketInfo,
                 format, keyed, getMetadata());
     }

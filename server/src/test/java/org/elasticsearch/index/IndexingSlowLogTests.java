@@ -20,7 +20,6 @@
 package org.elasticsearch.index;
 
 import com.fasterxml.jackson.core.JsonParseException;
-import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
@@ -83,7 +82,7 @@ public class IndexingSlowLogTests extends ESTestCase {
 
     public void testLevelPrecedence() {
         String uuid = UUIDs.randomBase64UUID();
-        IndexMetadata metadata = createIndexMetadata("index-precedence", settings(uuid));
+        IndexMetadata metadata = createIndexMetadata(SlowLogLevel.WARN, "index-precedence", uuid);
         IndexSettings settings = new IndexSettings(metadata, Settings.EMPTY);
         IndexingSlowLog log = new IndexingSlowLog(settings);
 
@@ -93,62 +92,61 @@ public class IndexingSlowLogTests extends ESTestCase {
         Engine.IndexResult result = Mockito.mock(Engine.IndexResult.class);//(0, 0, SequenceNumbers.UNASSIGNED_SEQ_NO, false);
         Mockito.when(result.getResultType()).thenReturn(Engine.Result.Type.SUCCESS);
 
-        // For this test, when level is not breached, the level below should be used.
         {
+            //level set to WARN, should only log when WARN limit is breached
             Mockito.when(result.getTook()).thenReturn(40L);
             log.postIndex(ShardId.fromString("[index][123]"), index, result);
-            assertThat(appender.getLastEventAndReset().getLevel(), equalTo(Level.INFO));
+            assertNull(appender.getLastEventAndReset());
 
             Mockito.when(result.getTook()).thenReturn(41L);
             log.postIndex(ShardId.fromString("[index][123]"), index, result);
-            assertThat(appender.getLastEventAndReset().getLevel(), equalTo(Level.WARN));
+            assertNotNull(appender.getLastEventAndReset());
+
         }
 
         {
+            // level set INFO, should log when INFO level is breached
+            settings.updateIndexMetadata(createIndexMetadata(SlowLogLevel.INFO, "index", uuid));
             Mockito.when(result.getTook()).thenReturn(30L);
             log.postIndex(ShardId.fromString("[index][123]"), index, result);
-            assertThat(appender.getLastEventAndReset().getLevel(), equalTo(Level.DEBUG));
+            assertNull(appender.getLastEventAndReset());
 
             Mockito.when(result.getTook()).thenReturn(31L);
             log.postIndex(ShardId.fromString("[index][123]"), index, result);
-            assertThat(appender.getLastEventAndReset().getLevel(), equalTo(Level.INFO));
+            assertNotNull(appender.getLastEventAndReset());
         }
 
         {
+            // level set DEBUG, should log when DEBUG level is breached
+            settings.updateIndexMetadata(createIndexMetadata(SlowLogLevel.DEBUG, "index", uuid));
             Mockito.when(result.getTook()).thenReturn(20L);
             log.postIndex(ShardId.fromString("[index][123]"), index, result);
-            assertThat(appender.getLastEventAndReset().getLevel(), equalTo(Level.TRACE));
+            assertNull(appender.getLastEventAndReset());
 
             Mockito.when(result.getTook()).thenReturn(21L);
             log.postIndex(ShardId.fromString("[index][123]"), index, result);
-            assertThat(appender.getLastEventAndReset().getLevel(), equalTo(Level.DEBUG));
+            assertNotNull(appender.getLastEventAndReset());
         }
 
         {
+            // level set TRACE, should log when TRACE level is breached
+            settings.updateIndexMetadata(createIndexMetadata(SlowLogLevel.TRACE, "index", uuid));
             Mockito.when(result.getTook()).thenReturn(10L);
             log.postIndex(ShardId.fromString("[index][123]"), index, result);
             assertNull(appender.getLastEventAndReset());
 
             Mockito.when(result.getTook()).thenReturn(11L);
             log.postIndex(ShardId.fromString("[index][123]"), index, result);
-            assertThat(appender.getLastEventAndReset().getLevel(), equalTo(Level.TRACE));
+            assertNotNull(appender.getLastEventAndReset());
         }
     }
 
     public void testTwoLoggersDifferentLevel() {
-        IndexSettings index1Settings = new IndexSettings(createIndexMetadata("index1", Settings.builder()
-            .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
-            .put(IndexMetadata.SETTING_INDEX_UUID, UUIDs.randomBase64UUID())
-            .put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_THRESHOLD_INDEX_WARN_SETTING.getKey(), "40nanos")
-            .build()),
+        IndexSettings index1Settings = new IndexSettings(createIndexMetadata(SlowLogLevel.WARN, "index1", UUIDs.randomBase64UUID()),
             Settings.EMPTY);
         IndexingSlowLog log1 = new IndexingSlowLog(index1Settings);
 
-        IndexSettings index2Settings = new IndexSettings(createIndexMetadata("index2", Settings.builder()
-            .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
-            .put(IndexMetadata.SETTING_INDEX_UUID, UUIDs.randomBase64UUID())
-            .put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_THRESHOLD_INDEX_TRACE_SETTING.getKey(), "10nanos")
-            .build()),
+        IndexSettings index2Settings = new IndexSettings(createIndexMetadata(SlowLogLevel.TRACE, "index2", UUIDs.randomBase64UUID()),
             Settings.EMPTY);
         IndexingSlowLog log2 = new IndexingSlowLog(index2Settings);
 
@@ -159,13 +157,12 @@ public class IndexingSlowLogTests extends ESTestCase {
         Mockito.when(result.getResultType()).thenReturn(Engine.Result.Type.SUCCESS);
 
         {
+            // level set WARN, should not log
             Mockito.when(result.getTook()).thenReturn(11L);
-
-            // threshold set on WARN(40nanos) where 11nanos does not breach, should not log
             log1.postIndex(ShardId.fromString("[index][123]"), index, result);
             assertNull(appender.getLastEventAndReset());
 
-            // threshold set on TRACE(10nanos) and 11nanos breaches it, should log
+            // level set TRACE, should log
             log2.postIndex(ShardId.fromString("[index][123]"), index, result);
             assertNotNull(appender.getLastEventAndReset());
         }
@@ -174,14 +171,14 @@ public class IndexingSlowLogTests extends ESTestCase {
     public void testMultipleSlowLoggersUseSingleLog4jLogger() {
         LoggerContext context = (LoggerContext) LogManager.getContext(false);
 
-        IndexSettings index1Settings = new IndexSettings(createIndexMetadata("index1", settings(UUIDs.randomBase64UUID())),
+        IndexSettings index1Settings = new IndexSettings(createIndexMetadata(SlowLogLevel.WARN, "index1", UUIDs.randomBase64UUID()),
             Settings.EMPTY);
         IndexingSlowLog log1 = new IndexingSlowLog(index1Settings);
 
         int numberOfLoggersBefore = context.getLoggers().size();
 
 
-        IndexSettings index2Settings = new IndexSettings(createIndexMetadata("index2", settings(UUIDs.randomBase64UUID())),
+        IndexSettings index2Settings = new IndexSettings(createIndexMetadata(SlowLogLevel.TRACE, "index2", UUIDs.randomBase64UUID()),
             Settings.EMPTY);
         IndexingSlowLog log2 = new IndexingSlowLog(index2Settings);
         context = (LoggerContext) LogManager.getContext(false);
@@ -190,19 +187,16 @@ public class IndexingSlowLogTests extends ESTestCase {
         assertThat(numberOfLoggersAfter, equalTo(numberOfLoggersBefore));
     }
 
-    private IndexMetadata createIndexMetadata(String index, Settings build) {
-        return newIndexMeta(index, build);
-    }
-
-    private Settings settings(String uuid) {
-        return Settings.builder()
+    private IndexMetadata createIndexMetadata(SlowLogLevel level, String index, String uuid) {
+        return newIndexMeta(index, Settings.builder()
             .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
             .put(IndexMetadata.SETTING_INDEX_UUID, uuid)
+            .put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_LEVEL_SETTING.getKey(), level)
             .put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_THRESHOLD_INDEX_TRACE_SETTING.getKey(), "10nanos")
             .put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_THRESHOLD_INDEX_DEBUG_SETTING.getKey(), "20nanos")
             .put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_THRESHOLD_INDEX_INFO_SETTING.getKey(), "30nanos")
             .put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_THRESHOLD_INDEX_WARN_SETTING.getKey(), "40nanos")
-            .build();
+            .build());
     }
 
     public void testSlowLogMessageHasJsonFields() throws IOException {
@@ -319,6 +313,72 @@ public class IndexingSlowLogTests extends ESTestCase {
                 hasToString(containsString("Failed to parse value [NOT A BOOLEAN] as only [true] or [false] are allowed.")));
         }
         assertTrue(log.isReformat());
+    }
+
+    public void testLevelSetting() {
+        SlowLogLevel level = randomFrom(SlowLogLevel.values());
+        IndexMetadata metadata = newIndexMeta("index", Settings.builder()
+            .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
+            .put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_LEVEL_SETTING.getKey(), level)
+            .build());
+        IndexSettings settings = new IndexSettings(metadata, Settings.EMPTY);
+        IndexingSlowLog log = new IndexingSlowLog(settings);
+        assertEquals(level, log.getLevel());
+        level = randomFrom(SlowLogLevel.values());
+        settings.updateIndexMetadata(newIndexMeta("index",
+            Settings.builder().put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_LEVEL_SETTING.getKey(), level).build()));
+        assertEquals(level, log.getLevel());
+        level = randomFrom(SlowLogLevel.values());
+        settings.updateIndexMetadata(newIndexMeta("index",
+            Settings.builder().put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_LEVEL_SETTING.getKey(), level).build()));
+        assertEquals(level, log.getLevel());
+
+
+        settings.updateIndexMetadata(newIndexMeta("index",
+            Settings.builder().put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_LEVEL_SETTING.getKey(), level).build()));
+        assertEquals(level, log.getLevel());
+
+        settings.updateIndexMetadata(newIndexMeta("index", Settings.EMPTY));
+        assertEquals(SlowLogLevel.TRACE, log.getLevel());
+
+        metadata = newIndexMeta("index", Settings.builder()
+            .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
+            .build());
+        settings = new IndexSettings(metadata, Settings.EMPTY);
+        log = new IndexingSlowLog(settings);
+        assertTrue(log.isReformat());
+        try {
+            settings.updateIndexMetadata(newIndexMeta("index",
+                Settings.builder().put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_LEVEL_SETTING.getKey(), "NOT A LEVEL").build()));
+            fail();
+        } catch (IllegalArgumentException ex) {
+            final String expected = "illegal value can't update [index.indexing.slowlog.level] from [TRACE] to [NOT A LEVEL]";
+            assertThat(ex, hasToString(containsString(expected)));
+            assertNotNull(ex.getCause());
+            assertThat(ex.getCause(), instanceOf(IllegalArgumentException.class));
+            final IllegalArgumentException cause = (IllegalArgumentException) ex.getCause();
+            assertThat(cause, hasToString(containsString("No enum constant org.elasticsearch.index.SlowLogLevel.NOT A LEVEL")));
+        }
+        assertEquals(SlowLogLevel.TRACE, log.getLevel());
+
+        metadata = newIndexMeta("index", Settings.builder()
+            .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
+            .put(IndexMetadata.SETTING_INDEX_UUID, UUIDs.randomBase64UUID())
+            .put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_LEVEL_SETTING.getKey(), SlowLogLevel.DEBUG)
+            .build());
+        settings = new IndexSettings(metadata, Settings.EMPTY);
+        IndexingSlowLog debugLog = new IndexingSlowLog(settings);
+
+        metadata = newIndexMeta("index", Settings.builder()
+            .put(IndexMetadata.SETTING_VERSION_CREATED, Version.CURRENT)
+            .put(IndexMetadata.SETTING_INDEX_UUID, UUIDs.randomBase64UUID())
+            .put(IndexingSlowLog.INDEX_INDEXING_SLOWLOG_LEVEL_SETTING.getKey(), SlowLogLevel.INFO)
+            .build());
+        settings = new IndexSettings(metadata, Settings.EMPTY);
+        IndexingSlowLog infoLog = new IndexingSlowLog(settings);
+
+        assertEquals(SlowLogLevel.DEBUG, debugLog.getLevel());
+        assertEquals(SlowLogLevel.INFO, infoLog.getLevel());
     }
 
     public void testSetLevels() {
