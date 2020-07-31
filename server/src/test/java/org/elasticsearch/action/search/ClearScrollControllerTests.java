@@ -44,7 +44,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ClearSearchContextControllerTests extends ESTestCase {
+public class ClearScrollControllerTests extends ESTestCase {
 
     public void testClearAll() throws InterruptedException {
         DiscoveryNode node1 = new DiscoveryNode("node_1", buildNewFakeTransportAddress(), Version.CURRENT);
@@ -74,13 +74,13 @@ public class ClearSearchContextControllerTests extends ESTestCase {
             }
 
             @Override
-            Transport.Connection getConnection(String clusterAlias, DiscoveryNode node) {
+            public Transport.Connection getConnection(String clusterAlias, DiscoveryNode node) {
                 return new SearchAsyncActionTests.MockConnection(node);
             }
         };
         ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
         clearScrollRequest.scrollIds(Arrays.asList("_all"));
-        ClearSearchContextController controller = new ClearSearchContextController(
+        ClearScrollController controller = new ClearScrollController(
             clearScrollRequest, listener, nodes, logger, searchTransportService);
         controller.run();
         latch.await();
@@ -139,13 +139,13 @@ public class ClearSearchContextControllerTests extends ESTestCase {
             }
 
             @Override
-            Transport.Connection getConnection(String clusterAlias, DiscoveryNode node) {
+            public Transport.Connection getConnection(String clusterAlias, DiscoveryNode node) {
                 return new SearchAsyncActionTests.MockConnection(node);
             }
         };
         ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
         clearScrollRequest.scrollIds(Arrays.asList(scrollId));
-        ClearSearchContextController controller = new ClearSearchContextController(clearScrollRequest, listener,
+        ClearScrollController controller = new ClearScrollController(clearScrollRequest, listener,
             nodes, logger, searchTransportService);
         controller.run();
         latch.await();
@@ -218,7 +218,7 @@ public class ClearSearchContextControllerTests extends ESTestCase {
             }
 
             @Override
-            Transport.Connection getConnection(String clusterAlias, DiscoveryNode node) {
+            public Transport.Connection getConnection(String clusterAlias, DiscoveryNode node) {
                 if (randomBoolean()) {
                     numFailures.incrementAndGet();
                     numConnectionFailures.incrementAndGet();
@@ -229,7 +229,7 @@ public class ClearSearchContextControllerTests extends ESTestCase {
         };
         ClearScrollRequest clearScrollRequest = new ClearScrollRequest();
         clearScrollRequest.scrollIds(Arrays.asList(scrollId));
-        ClearSearchContextController controller = new ClearSearchContextController(clearScrollRequest, listener,
+        ClearScrollController controller = new ClearScrollController(clearScrollRequest, listener,
             nodes, logger, searchTransportService);
         controller.run();
         latch.await();

@@ -1,0 +1,24 @@
+evaluationDependsOn(xpackModule('core'))
+
+apply plugin: 'elasticsearch.esplugin'
+apply plugin: 'elasticsearch.internal-cluster-test'
+esplugin {
+    name 'search-context'
+    description 'A module which allows to manage search contexts - lightweight, ephemeral, point in time, view into the state of the data'
+    classname 'org.elasticsearch.xpack.search.SearchContextPlugin'
+    extendedPlugins = ['x-pack-core']
+}
+archivesBaseName = 'x-pack-search-context'
+
+compileJava.options.compilerArgs << "-Xlint:-rawtypes"
+compileTestJava.options.compilerArgs << "-Xlint:-rawtypes"
+
+dependencies {
+  compileOnly project(":server")
+
+  compileOnly project(path: xpackModule('core'), configuration: 'default')
+  testImplementation project(path: xpackModule('core'), configuration: 'testArtifacts')
+}
+
+integTest.enabled = false
+

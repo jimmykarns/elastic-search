@@ -57,7 +57,7 @@ public class SearchContextId {
         return aliasFilter;
     }
 
-    static String encode(List<SearchPhaseResult> searchPhaseResults, Map<String, AliasFilter> aliasFilter, Version version) {
+    public static String encode(List<SearchPhaseResult> searchPhaseResults, Map<String, AliasFilter> aliasFilter, Version version) {
         final Map<ShardId, SearchContextIdForNode> shards = new HashMap<>();
         for (SearchPhaseResult searchPhaseResult : searchPhaseResults) {
             final SearchShardTarget target = searchPhaseResult.getSearchShardTarget();
@@ -75,7 +75,7 @@ public class SearchContextId {
         }
     }
 
-    static SearchContextId decode(NamedWriteableRegistry namedWriteableRegistry, String id) {
+    public static SearchContextId decode(NamedWriteableRegistry namedWriteableRegistry, String id) {
         final ByteBuffer byteBuffer;
         try {
             byteBuffer = ByteBuffer.wrap(Base64.getUrlDecoder().decode(id));

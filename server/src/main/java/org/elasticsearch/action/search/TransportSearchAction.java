@@ -46,12 +46,14 @@ import org.elasticsearch.common.io.stream.Writeable;
 import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Setting.Property;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.util.concurrent.AtomicArray;
 import org.elasticsearch.common.util.concurrent.CountDown;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.query.Rewriteable;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.search.SearchPhaseResult;
 import org.elasticsearch.search.SearchService;
+import org.elasticsearch.search.SearchShardTarget;
 import org.elasticsearch.search.aggregations.InternalAggregation;
 import org.elasticsearch.search.aggregations.InternalAggregations;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -207,8 +209,56 @@ public class TransportSearchAction extends HandledTransportAction<SearchRequest,
         executeRequest(task, searchRequest, this::searchAsyncAction, listener);
     }
 
-    void executeRequest(Task task, SearchRequest searchRequest,
-                        SearchAsyncActionProvider searchAsyncActionProvider, ActionListener<SearchResponse> listener) {
+    public interface SinglePhaseSearchAction {
+        void executeOnShardTarget(SearchTask searchTask, SearchShardTarget target, Transport.Connection connection,
+                                  ActionListener<SearchPhaseResult> listener);
+    }
+
+    public void executeRequest(Task task, SearchRequest searchRequest, String actionName, Executor executor,
+                               boolean includeSearchContext, SinglePhaseSearchAction phaseSearchAction,
+                               ActionListener<SearchResponse> listener) {
+        executeRequest(task, searchRequest, new SearchAsyncActionProvider() {
+            @Override
+            public AbstractSearchAsyncAction<? extends SearchPhaseResult> asyncSearchAction(
+                SearchTask task, SearchRequest searchRequest, GroupShardsIterator<SearchShardIterator> shardsIts,
+                SearchTimeProvider timeProvider, BiFunction<String, String, Transport.Connection> connectionLookup,
+                ClusterState clusterState, Map<String, AliasFilter> aliasFilter,
+                Map<String, Float> concreteIndexBoosts, Map<String, Set<String>> indexRoutings,
+                ActionListener<SearchResponse> listener, boolean preFilter, ThreadPool threadPool, SearchResponse.Clusters clusters) {
+                return new AbstractSearchAsyncAction<>(
+                    actionName, logger, searchTransportService, connectionLookup, aliasFilter, concreteIndexBoosts,
+                    indexRoutings, executor, searchRequest, listener, shardsIts, timeProvider, clusterState, task,
+                    new ArraySearchPhaseResults<>(shardsIts.size()), 1, clusters) {
+                    @Override
+                    protected void executePhaseOnShard(SearchShardIterator shardIt, ShardRouting shard,
+                                                       SearchActionListener<SearchPhaseResult> listener) {
+                        final Transport.Connection connection = getConnection(shardIt.getClusterAlias(), shard.currentNodeId());
+                        final SearchShardTarget searchShardTarget = shardIt.newSearchShardTarget(shard.currentNodeId());
+                        phaseSearchAction.executeOnShardTarget(task, searchShardTarget, connection, listener);
+                    }
+
+                    @Override
+                    protected SearchPhase getNextPhase(SearchPhaseResults<SearchPhaseResult> results, SearchPhaseContext context) {
+                        return new SearchPhase(getName()) {
+                            @Override
+                            public void run() {
+                                final AtomicArray<SearchPhaseResult> atomicArray = results.getAtomicArray();
+                                sendSearchResponse(InternalSearchResponse.empty(), atomicArray);
+                            }
+                        };
+                    }
+
+                    @Override
+                    boolean includeSearchContextInResponse() {
+                        return includeSearchContext;
+                    }
+                };
+            }
+        }, listener);
+    }
+
+    private void executeRequest(Task task, SearchRequest searchRequest,
+                                SearchAsyncActionProvider searchAsyncActionProvider, ActionListener<SearchResponse> listener) {
         final long relativeStartNanos = System.nanoTime();
         final SearchTimeProvider timeProvider =
             new SearchTimeProvider(searchRequest.getOrCreateAbsoluteStartMillis(), relativeStartNanos, System::nanoTime);

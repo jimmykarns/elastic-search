@@ -11,14 +11,11 @@ import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse;
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.action.search.CloseSearchContextAction;
-import org.elasticsearch.action.search.CloseSearchContextRequest;
-import org.elasticsearch.action.search.OpenSearchContextRequest;
-import org.elasticsearch.action.search.OpenSearchContextResponse;
+import org.elasticsearch.xpack.core.search.action.CloseSearchContextAction;
+import org.elasticsearch.xpack.core.search.action.CloseSearchContextRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.search.SearchType;
-import org.elasticsearch.action.search.TransportOpenSearchContextAction;
 import org.elasticsearch.action.support.IndicesOptions;
 import org.elasticsearch.cluster.block.ClusterBlockException;
 import org.elasticsearch.cluster.metadata.IndexMetadata;
@@ -46,6 +43,9 @@ import org.elasticsearch.search.internal.AliasFilter;
 import org.elasticsearch.search.internal.ShardSearchRequest;
 import org.elasticsearch.test.ESSingleNodeTestCase;
 import org.elasticsearch.xpack.core.frozen.action.FreezeIndexAction;
+import org.elasticsearch.xpack.core.search.action.OpenSearchContextAction;
+import org.elasticsearch.xpack.core.search.action.OpenSearchContextRequest;
+import org.elasticsearch.xpack.core.search.action.OpenSearchContextResponse;
 import org.elasticsearch.xpack.frozen.FrozenIndices;
 import org.hamcrest.Matchers;
 
@@ -71,10 +71,9 @@ public class FrozenIndexTests extends ESSingleNodeTestCase {
     }
 
     String openReaders(TimeValue keepAlive, String... indices) {
-        OpenSearchContextRequest request = new OpenSearchContextRequest(indices, IndicesOptions.STRICT_EXPAND_OPEN_FORBID_CLOSED,
-            keepAlive, null, null);
-        final OpenSearchContextResponse response = client()
-            .execute(TransportOpenSearchContextAction.INSTANCE, request).actionGet();
+        OpenSearchContextRequest request = new OpenSearchContextRequest(
+            indices, IndicesOptions.STRICT_EXPAND_OPEN_FORBID_CLOSED, keepAlive, null, null);
+        final OpenSearchContextResponse response = client().execute(OpenSearchContextAction.INSTANCE, request).actionGet();
         return response.getSearchContextId();
     }
 

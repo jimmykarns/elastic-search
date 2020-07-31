@@ -27,7 +27,7 @@ import org.elasticsearch.search.internal.ShardSearchContextId;
 
 import java.io.IOException;
 
-final class SearchContextIdForNode implements Writeable {
+public final class SearchContextIdForNode implements Writeable {
     private final String node;
     private final ShardSearchContextId searchContextId;
     private final String clusterAlias;
