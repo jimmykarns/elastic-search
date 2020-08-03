@@ -4,10 +4,8 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 
-package org.elasticsearch.xpack.search;
+package org.elasticsearch.xpack.core.search.action;
 
-import org.elasticsearch.xpack.core.search.action.CloseSearchContextAction;
-import org.elasticsearch.xpack.core.search.action.CloseSearchContextRequest;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.rest.BaseRestHandler;

@@ -811,8 +811,6 @@ public class RestHighLevelClientTests extends ESTestCase {
             "indices.simulate_template",
             "indices.resolve_index",
             "indices.add_block",
-            "open_search_context",
-            "close_search_context",
         };
         //These API are not required for high-level client feature completeness
         String[] notRequiredApi = new String[] {

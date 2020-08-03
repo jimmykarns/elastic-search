@@ -4,7 +4,7 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 
-package org.elasticsearch.xpack.search;
+package org.elasticsearch.xpack.core.search.action;
 
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.search.ClearScrollController;
@@ -18,9 +18,6 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.tasks.Task;
 import org.elasticsearch.transport.TransportService;
-import org.elasticsearch.xpack.core.search.action.CloseSearchContextAction;
-import org.elasticsearch.xpack.core.search.action.CloseSearchContextRequest;
-import org.elasticsearch.xpack.core.search.action.CloseSearchContextResponse;
 
 import java.util.Collection;
 

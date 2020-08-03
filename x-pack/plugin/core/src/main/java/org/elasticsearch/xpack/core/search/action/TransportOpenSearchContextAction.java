@@ -4,7 +4,7 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 
-package org.elasticsearch.xpack.search;
+package org.elasticsearch.xpack.core.search.action;
 
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ActionListenerResponseHandler;
@@ -31,9 +31,6 @@ import org.elasticsearch.transport.TransportChannel;
 import org.elasticsearch.transport.TransportRequest;
 import org.elasticsearch.transport.TransportRequestHandler;
 import org.elasticsearch.transport.TransportService;
-import org.elasticsearch.xpack.core.search.action.OpenSearchContextAction;
-import org.elasticsearch.xpack.core.search.action.OpenSearchContextRequest;
-import org.elasticsearch.xpack.core.search.action.OpenSearchContextResponse;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;

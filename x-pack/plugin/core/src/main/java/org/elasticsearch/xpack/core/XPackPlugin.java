@@ -66,6 +66,12 @@ import org.elasticsearch.xpack.core.ml.MlMetadata;
 import org.elasticsearch.xpack.core.rest.action.RestReloadAnalyzersAction;
 import org.elasticsearch.xpack.core.rest.action.RestXPackInfoAction;
 import org.elasticsearch.xpack.core.rest.action.RestXPackUsageAction;
+import org.elasticsearch.xpack.core.search.action.CloseSearchContextAction;
+import org.elasticsearch.xpack.core.search.action.OpenSearchContextAction;
+import org.elasticsearch.xpack.core.search.action.RestCloseSearchContextAction;
+import org.elasticsearch.xpack.core.search.action.RestOpenSearchContextAction;
+import org.elasticsearch.xpack.core.search.action.TransportCloseSearchContextAction;
+import org.elasticsearch.xpack.core.search.action.TransportOpenSearchContextAction;
 import org.elasticsearch.xpack.core.security.authc.TokenMetadata;
 import org.elasticsearch.xpack.core.ssl.SSLConfiguration;
 import org.elasticsearch.xpack.core.ssl.SSLConfigurationReloader;
@@ -265,6 +271,8 @@ public class XPackPlugin extends XPackClientPlugin implements ExtensiblePlugin, 
         actions.addAll(licensing.getActions());
         actions.add(new ActionHandler<>(ReloadAnalyzerAction.INSTANCE, TransportReloadAnalyzersAction.class));
         actions.add(new ActionHandler<>(DeleteAsyncResultAction.INSTANCE, TransportDeleteAsyncResultAction.class));
+        actions.add(new ActionHandler<>(OpenSearchContextAction.INSTANCE, TransportOpenSearchContextAction.class));
+        actions.add(new ActionHandler<>(CloseSearchContextAction.INSTANCE, TransportCloseSearchContextAction.class));
         return actions;
     }
 
@@ -303,6 +311,8 @@ public class XPackPlugin extends XPackClientPlugin implements ExtensiblePlugin, 
         handlers.add(new RestReloadAnalyzersAction());
         handlers.addAll(licensing.getRestHandlers(settings, restController, clusterSettings, indexScopedSettings, settingsFilter,
                 indexNameExpressionResolver, nodesInCluster));
+        handlers.add(new RestOpenSearchContextAction());
+        handlers.add(new RestCloseSearchContextAction());
         return handlers;
     }
 

@@ -4,11 +4,12 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 
-package org.elasticsearch.xpack.search;
+package org.elasticsearch.xpack.core.search;
 
 import org.elasticsearch.ExceptionsHelper;
 import org.elasticsearch.action.admin.indices.stats.CommonStats;
 import org.elasticsearch.plugins.Plugin;
+import org.elasticsearch.xpack.core.LocalStateCompositeXPackPlugin;
 import org.elasticsearch.xpack.core.search.action.CloseSearchContextAction;
 import org.elasticsearch.xpack.core.search.action.CloseSearchContextRequest;
 import org.elasticsearch.action.search.SearchPhaseExecutionException;
@@ -57,7 +58,7 @@ public class SearchWithReaderContextIT extends ESIntegTestCase {
     @Override
     protected Collection<Class<? extends Plugin>> nodePlugins() {
         final List<Class<? extends Plugin>> plugins = new ArrayList<>();
-        plugins.add(SearchContextPlugin.class);
+        plugins.add(LocalStateCompositeXPackPlugin.class);
         return plugins;
     }
 
