@@ -18,6 +18,7 @@
  */
 package org.elasticsearch.gradle.testclusters;
 
+import org.apache.commons.io.FileUtils;
 import org.elasticsearch.gradle.Architecture;
 import org.elasticsearch.gradle.DistributionDownloadPlugin;
 import org.elasticsearch.gradle.ElasticsearchDistribution;
@@ -84,6 +85,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -991,7 +993,15 @@ public class ElasticsearchNode implements TestClusterConfiguration {
 
     private void createWorkingDir(Path distroExtractDir) throws IOException {
         if (Files.exists(getDistroDir()) == false) {
-            syncWithLinks(distroExtractDir, getDistroDir());
+            try {
+                syncWithLinks(distroExtractDir, getDistroDir());
+            } catch (LinkCreationException e) {
+                // Note does not work for network drives, e.g. Vagrant
+                LOGGER.info("Failed to create working dir using hard links. Falling back to copy", e);
+                // ensure we get a clean copy
+                FileUtils.deleteDirectory(getDistroDir().toFile());
+                syncWithCopy(distroExtractDir, getDistroDir());
+            }
         }
         // Start configuration from scratch in case of a restart
         project.delete(configFile.getParent());
@@ -1011,6 +1021,27 @@ public class ElasticsearchNode implements TestClusterConfiguration {
      * @param destinationRoot destination to link to
      */
     private void syncWithLinks(Path sourceRoot, Path destinationRoot) {
+        sync(sourceRoot, destinationRoot, (Path d, Path s) -> {
+            try {
+                Files.createLink(d, s);
+            } catch (IOException e) {
+                // Note does not work for network drives, e.g. Vagrant
+                throw new LinkCreationException("Failed to create hard link " + d + " pointing to " + s, e);
+            }
+        });
+    }
+
+    private void syncWithCopy(Path sourceRoot, Path destinationRoot) {
+        sync(sourceRoot, destinationRoot, (Path d, Path s) -> {
+            try {
+                Files.copy(s, d);
+            } catch (IOException e) {
+                throw new UncheckedIOException("Failed to copy " + s + " to " + d, e);
+            }
+        });
+    }
+
+    private void sync(Path sourceRoot, Path destinationRoot, BiConsumer<Path, Path> syncMethod) {
         assert Files.exists(destinationRoot) == false;
         try (Stream<Path> stream = Files.walk(sourceRoot)) {
             stream.forEach(source -> {
@@ -1034,12 +1065,8 @@ public class ElasticsearchNode implements TestClusterConfiguration {
                     } catch (IOException e) {
                         throw new UncheckedIOException("Can't create directory " + destination.getParent(), e);
                     }
-                    try {
-                        Files.createLink(destination, source);
-                    } catch (IOException e) {
-                        // Note does not work for network drives, e.g. Vagrant
-                        throw new UncheckedIOException("Failed to create hard link " + destination + " pointing to " + source, e);
-                    }
+                    syncMethod.accept(destination, source);
+
                 }
             });
         } catch (IOException e) {
@@ -1159,7 +1186,7 @@ public class ElasticsearchNode implements TestClusterConfiguration {
     }
 
     private Path getExtractedDistributionDir() {
-        return Paths.get(distributions.get(currentDistro).getExtracted().toString());
+        return distributions.get(currentDistro).getExtracted().getSingleFile().toPath();
     }
 
     private List<File> getInstalledFileSet(Action<? super PatternFilterable> filter) {
@@ -1390,6 +1417,12 @@ public class ElasticsearchNode implements TestClusterConfiguration {
         @Input
         public CharSequence[] getArgs() {
             return args;
+        }
+    }
+
+    private static class LinkCreationException extends UncheckedIOException {
+        LinkCreationException(String message, IOException cause) {
+            super(message, cause);
         }
     }
 }
